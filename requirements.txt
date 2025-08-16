@@ -1,0 +1,29 @@
+#torchvision==0.21.0
+
+einops
+#omegaconf==2.3.0
+jaxtyping
+typeguard
+imageio
+#trimesh==4.6.4
+#peft==0.14.0
+#diffusers==0.33.1
+#bitsandbytes
+#transformers==4.52.4
+ftfy
+accelerate
+sentencepiece
+ipdb
+clean-fid
+#apex==0.9.10.dev0
+#xatlas
+gradio_litmodel3d
+spaces
+numpy
+opencv-python
+
+#linux nvdiffrast:
+#https://huggingface.co/spaces/VAST-AI/MV-Adapter-Img2Texture/resolve/main/wheels/nvdiffrast-0.3.3-cp312-cp312-linux_x86_64.whl?download=true
+
+#windows nvdiffrast:
+https://huggingface.co/spaces/Surn/HexaGrid/resolve/main/wheels/nvdiffrast-0.3.3-py3-none-any.whl

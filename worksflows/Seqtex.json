@@ -1,0 +1,829 @@
+{
+  "id": "b6b759bd-b562-45e0-98ca-f9bf767bf71c",
+  "revision": 0,
+  "last_node_id": 134,
+  "last_link_id": 516,
+  "nodes": [
+    {
+      "id": 16,
+      "type": "SeqTex_Loader",
+      "pos": [
+        -1101.13916015625,
+        -1560.2176513671875
+      ],
+      "size": [
+        140,
+        26
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SEQTEX_PIPE",
+          "type": "SEQTEX_PIPE",
+          "links": [
+            338
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SeqTex_Loader",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 133,
+      "type": "SeqTex_Load_Mesh",
+      "pos": [
+        -2916.06103515625,
+        -1308.7911376953125
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            514
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SeqTex_Load_Mesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "D:\\ComfyUI_windows_portable\\ComfyUI\\custom_nodes\\ComfyUI-SeqTex\\examples\\birdhouse.glb",
+        "glb"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 115,
+      "type": "Preview3D",
+      "pos": [
+        436.61474609375,
+        -1502.26708984375
+      ],
+      "size": [
+        692.9368896484375,
+        647.1397094726562
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "camera_info",
+          "shape": 7,
+          "type": "LOAD3D_CAMERA",
+          "link": null
+        },
+        {
+          "name": "model_file",
+          "type": "STRING",
+          "widget": {
+            "name": "model_file"
+          },
+          "link": 516
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.49",
+        "Node name for S&R": "Preview3D",
+        "widget_ue_connectable": {},
+        "Camera Info": {
+          "position": {
+            "x": 8.573749999999997,
+            "y": 8.573749999999999,
+            "z": 8.573749999999999
+          },
+          "target": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "zoom": 1,
+          "cameraType": "perspective"
+        },
+        "Material Mode": "original"
+      },
+      "widgets_values": [
+        "",
+        ""
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 95,
+      "type": "ttN text",
+      "pos": [
+        -1921.2169189453125,
+        -777.3070678710938
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            412,
+            477
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_tinyterranodes",
+        "ver": "c669e6cff81ba44cce91c9eee3236c1a64725394",
+        "Node name for S&R": "ttN text",
+        "widget_ue_connectable": {},
+        "ttNnodeVersion": "1.0.0"
+      },
+      "widgets_values": [
+        "A wooden birdhouse with colorful birds"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 10,
+      "type": "PreviewImage",
+      "pos": [
+        -274.6528015136719,
+        -1326.8209228515625
+      ],
+      "size": [
+        557.0549926757812,
+        445.6492919921875
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 344
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.50",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 52,
+      "type": "PreviewImage",
+      "pos": [
+        -282.49676513671875,
+        -804.38916015625
+      ],
+      "size": [
+        733.3248291015625,
+        286.9123840332031
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 393
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.49",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 45,
+      "type": "PreviewImage",
+      "pos": [
+        -968.0724487304688,
+        -804.4534912109375
+      ],
+      "size": [
+        401.0556335449219,
+        265.3795471191406
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 403
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.49",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 134,
+      "type": "PreviewImage",
+      "pos": [
+        -1972.7841796875,
+        -1746.9119873046875
+      ],
+      "size": [
+        500.0089416503906,
+        333.80706787109375
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 515
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.49",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 117,
+      "type": "SeqTex_Step4_SaveMesh",
+      "pos": [
+        -240.31610107421875,
+        -1528.4444580078125
+      ],
+      "size": [
+        353.0552673339844,
+        126
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "trimesh_input",
+          "type": "TRIMESH",
+          "link": 498
+        },
+        {
+          "name": "texture_map",
+          "type": "IMAGE",
+          "link": 434
+        }
+      ],
+      "outputs": [
+        {
+          "name": "save_path",
+          "type": "STRING",
+          "links": [
+            516
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SeqTex_Step4_SaveMesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "SeqTex_",
+        "glb",
+        true
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 94,
+      "type": "SeqTex_Step3_GenerateTexture",
+      "pos": [
+        -864.0135498046875,
+        -1354.43603515625
+      ],
+      "size": [
+        306.9126892089844,
+        390
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "seqtex_pipe",
+          "type": "SEQTEX_PIPE",
+          "link": 338
+        },
+        {
+          "name": "condition_image",
+          "type": "IMAGE",
+          "link": 402
+        },
+        {
+          "name": "position_map_path",
+          "type": "STRING",
+          "widget": {
+            "name": "position_map_path"
+          },
+          "link": 507
+        },
+        {
+          "name": "normal_map_path",
+          "type": "STRING",
+          "widget": {
+            "name": "normal_map_path"
+          },
+          "link": 508
+        },
+        {
+          "name": "position_images_path",
+          "type": "STRING",
+          "widget": {
+            "name": "position_images_path"
+          },
+          "link": 509
+        },
+        {
+          "name": "normal_images_path",
+          "type": "STRING",
+          "widget": {
+            "name": "normal_images_path"
+          },
+          "link": 503
+        },
+        {
+          "name": "text_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "text_prompt"
+          },
+          "link": 477
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            344,
+            434
+          ]
+        },
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            393
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SeqTex_Step3_GenerateTexture",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "",
+        "",
+        "",
+        "",
+        "a birdhouse",
+        871159094685131,
+        "fixed",
+        "First View",
+        1,
+        1,
+        1024,
+        512,
+        4,
+        1
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 103,
+      "type": "SeqTex_Step2_GenerateCondition",
+      "pos": [
+        -1395.80322265625,
+        -1149.3992919921875
+      ],
+      "size": [
+        320.1539001464844,
+        330
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "position_images",
+          "type": "STRING",
+          "widget": {
+            "name": "position_images"
+          },
+          "link": 513
+        },
+        {
+          "name": "normal_images",
+          "type": "STRING",
+          "widget": {
+            "name": "normal_images"
+          },
+          "link": 512
+        },
+        {
+          "name": "mask_images",
+          "type": "STRING",
+          "widget": {
+            "name": "mask_images"
+          },
+          "link": 511
+        },
+        {
+          "name": "w2c_matrix",
+          "type": "STRING",
+          "widget": {
+            "name": "w2c_matrix"
+          },
+          "link": 510
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 412
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            402,
+            403
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SeqTex_Step2_GenerateCondition",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "",
+        "",
+        "",
+        "",
+        "a birdhouse",
+        1100875541181229,
+        "fixed",
+        "First View",
+        1,
+        false,
+        true,
+        "SDXL"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 131,
+      "type": "SeqTex_Step1_ProcessMesh",
+      "pos": [
+        -2510.6962890625,
+        -1312.3499755859375
+      ],
+      "size": [
+        293.783203125,
+        362
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_trimesh",
+          "type": "TRIMESH",
+          "link": 514
+        },
+        {
+          "name": "uv_preview",
+          "shape": 7,
+          "type": "I",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            498
+          ]
+        },
+        {
+          "name": "uv_preview",
+          "type": "IMAGE",
+          "links": [
+            515
+          ]
+        },
+        {
+          "name": "position_map_path",
+          "type": "STRING",
+          "links": [
+            507
+          ]
+        },
+        {
+          "name": "normal_map_path",
+          "type": "STRING",
+          "links": [
+            508
+          ]
+        },
+        {
+          "name": "position_images_path",
+          "type": "STRING",
+          "links": [
+            503,
+            509,
+            513
+          ]
+        },
+        {
+          "name": "normal_images_path",
+          "type": "STRING",
+          "links": [
+            512
+          ]
+        },
+        {
+          "name": "mask_images_path",
+          "type": "STRING",
+          "links": [
+            511
+          ]
+        },
+        {
+          "name": "w2c_matrix_path",
+          "type": "STRING",
+          "links": [
+            510
+          ]
+        },
+        {
+          "name": "mvp_matrix_path",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SeqTex_Step1_ProcessMesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        true,
+        false,
+        false,
+        false,
+        1024,
+        512,
+        true
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    }
+  ],
+  "links": [
+    [
+      338,
+      16,
+      0,
+      94,
+      0,
+      "SEQTEX_PIPE"
+    ],
+    [
+      344,
+      94,
+      0,
+      10,
+      0,
+      "IMAGE"
+    ],
+    [
+      393,
+      94,
+      1,
+      52,
+      0,
+      "IMAGE"
+    ],
+    [
+      402,
+      103,
+      0,
+      94,
+      1,
+      "IMAGE"
+    ],
+    [
+      403,
+      103,
+      0,
+      45,
+      0,
+      "IMAGE"
+    ],
+    [
+      412,
+      95,
+      0,
+      103,
+      4,
+      "STRING"
+    ],
+    [
+      434,
+      94,
+      0,
+      117,
+      1,
+      "IMAGE"
+    ],
+    [
+      477,
+      95,
+      0,
+      94,
+      6,
+      "STRING"
+    ],
+    [
+      498,
+      131,
+      0,
+      117,
+      0,
+      "TRIMESH"
+    ],
+    [
+      503,
+      131,
+      4,
+      94,
+      5,
+      "STRING"
+    ],
+    [
+      507,
+      131,
+      2,
+      94,
+      2,
+      "STRING"
+    ],
+    [
+      508,
+      131,
+      3,
+      94,
+      3,
+      "STRING"
+    ],
+    [
+      509,
+      131,
+      4,
+      94,
+      4,
+      "STRING"
+    ],
+    [
+      510,
+      131,
+      7,
+      103,
+      3,
+      "STRING"
+    ],
+    [
+      511,
+      131,
+      6,
+      103,
+      2,
+      "STRING"
+    ],
+    [
+      512,
+      131,
+      5,
+      103,
+      1,
+      "STRING"
+    ],
+    [
+      513,
+      131,
+      4,
+      103,
+      0,
+      "STRING"
+    ],
+    [
+      514,
+      133,
+      0,
+      131,
+      0,
+      "TRIMESH"
+    ],
+    [
+      515,
+      131,
+      1,
+      134,
+      0,
+      "IMAGE"
+    ],
+    [
+      516,
+      117,
+      0,
+      115,
+      1,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6588450000000007,
+      "offset": [
+        2793.263385227659,
+        1834.26926129335
+      ]
+    },
+    "frontendVersion": "1.24.4",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true,
+    "ue_links": [],
+    "links_added_by_ue": []
+  },
+  "version": 0.4
+}
