@@ -63,16 +63,18 @@ def get_seqtex_pipe():
         if TEX_PIPE is not None:
             return TEX_PIPE
 
-        # --- Get auth token safely ---
+        auth_token = os.getenv("SEQTEX_SPACE_TOKEN")
+        if auth_token is None:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!! WARNING: Hugging Face token not found in environment variables.         !!!")
+            print("!!! Please set the SEQTEX_SPACE_TOKEN environment variable with your token. !!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
-
-        # Load transformer with auto-configured LoRA adapter first (CPU by default)
         transformer = WanT2TexTransformer3DModel.from_pretrained(
             cfg.seqtex_transformer_path,
-            token="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"
+            token=auth_token
         )
 
-        # Pipeline - pass the pre-loaded transformer to avoid re-loading
         TEX_PIPE = WanT2TexPipeline.from_pretrained(
             cfg.video_base_name,
             transformer=transformer,

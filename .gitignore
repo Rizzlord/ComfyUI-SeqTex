@@ -180,4 +180,4 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 .gitattributes
-__pycache__/
+utils/__pycache__/
