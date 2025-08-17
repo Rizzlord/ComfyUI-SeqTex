@@ -69,7 +69,7 @@ def get_seqtex_pipe():
         # Load transformer with auto-configured LoRA adapter first (CPU by default)
         transformer = WanT2TexTransformer3DModel.from_pretrained(
             cfg.seqtex_transformer_path,
-            token="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"
+            token="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"
         )
 
         # Pipeline - pass the pre-loaded transformer to avoid re-loading

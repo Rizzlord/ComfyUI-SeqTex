@@ -301,10 +301,22 @@ class WanT2TexPipeline(WanPipeline):
             sigmas = rearrange(sigmas, "(B F) -> B 1 F 1 1", B=batch_size)
             match task_type:
                 case "geo+mv2tex":
-                    timestep_df[:, :num_frames // self.vae_scale_factor_temporal] = self.min_noise_level_timestep
-                    sigmas[:, :, :num_frames // self.vae_scale_factor_temporal, ...] = self.min_noise_level_sigma
-                    mv_noise = torch.randn_like(mv_latents) # B C 4 H W
-                    mv_latents = (1.0 - sigmas[:, :, :-1, ...]) * gt_condition[0] + sigmas[:, :, :-1, ...] * mv_noise 
+                    # Optionally set minimum noise levels for first frames
+                    min_frames = 4
+                    timestep_df[:, :min_frames] = self.min_noise_level_timestep
+                    sigmas[:, :, :min_frames, ...] = self.min_noise_level_sigma
+
+                    # Generate random noise for all frames
+                    mv_noise = randn_tensor(mv_latents[:, :, :min_frames].shape, generator=generator, device=device, dtype=self.dtype)
+
+                    # Assign condition frames
+                    for idx, cond_img in enumerate(gt_condition):
+                        frame_idx = idx  # map first condition to first frame, etc.
+                        mv_latents[:, :, frame_idx:frame_idx+1, ...] = (
+                            (1.0 - sigmas[:, :, frame_idx:frame_idx+1, ...]) * cond_img +
+                            sigmas[:, :, frame_idx:frame_idx+1, ...] * mv_noise[:, :, frame_idx:frame_idx+1, ...]
+                        )
+
                 case "img2tex":
                     assert inference_img_cond_frame is not None, "inference_img_cond_frame should be specified for img2tex task"
                     # Use specified frame index as condition instead of just first frame
