@@ -24,7 +24,7 @@ from .utils.texture_generation import encode_images,  decode_images, convert_img
 from .utils.file_utils import save_tensor_to_file, load_tensor_from_file
 from .utils import tensor_to_pil
 import trimesh 
-
+from PIL import ImageDraw
 
 @dataclass
 class Config:
@@ -56,18 +56,23 @@ seqtex_global_pipe = None
 class SeqTex_Loader:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {}}
-
+        return {
+            "required": {
+                "min_noise_level_index": ("INT", {"default": 15, "min": 0, "max": 999}),
+                "flow_shift": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 999.99}),
+            }
+        }
     RETURN_TYPES = ("SEQTEX_PIPE",)
     FUNCTION = "load_pipe"
     CATEGORY = "SeqTex/Loaders"
 
-    def load_pipe(self):
+    def load_pipe(self, min_noise_level_index, flow_shift):
         global seqtex_global_pipe
         if seqtex_global_pipe is not None:
             print("Using cached SeqTex pipe")
             return (seqtex_global_pipe,)
-        seqtex_global_pipe = get_seqtex_pipe()
+
+        seqtex_global_pipe = get_seqtex_pipe(min_noise_level_index=min_noise_level_index, flow_shift=flow_shift)
         return (seqtex_global_pipe,)
     
 class SeqTex_Load_Mesh:
@@ -88,7 +93,11 @@ class SeqTex_Load_Mesh:
     DESCRIPTION = "Loads a model from the given path."
 
     def load(self, load_path, file_format):
-        mesh = trimesh.load(load_path, force="mesh", format=file_format)
+        mesh = trimesh.load(load_path, force="mesh", format=file_format, process=False)
+
+        #new_vertices, new_faces = trimesh.remesh.subdivide(mesh.vertices, mesh.faces)
+        #mesh = trimesh.Trimesh(vertices=new_vertices, faces=new_faces)
+
         return (mesh,)
     
 class SeqTex_Step1_ProcessMesh:
@@ -106,25 +115,45 @@ class SeqTex_Step1_ProcessMesh:
                 "upside_down": ("BOOLEAN", {"default": False}),
                 "uv_size": ("INT", {"default": 1024, "min": 0, "max": 8192}),
                 "mv_size": ("INT", {"default": 512, "min": 0, "max": 8192}),
+                "enable_xatlas": ("BOOLEAN", {"default": False}),
                 "enable_uv_preview": ("BOOLEAN", {"default": False}),
+                "smooth_normals": ("BOOLEAN", {"default": True}),
+                "fix_normals": ("BOOLEAN", {"default": True}),
             },
             "optional": {
                 "uv_preview": ("IMAGE"),
             },
         }
 
-    RETURN_TYPES = ( "TRIMESH", "IMAGE", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING",)
+    RETURN_TYPES = ( "TRIMESH", "IMAGE", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = ( "trimesh", "uv_preview", "position_map_path", "normal_map_path", "position_images_path",
                     "normal_images_path", "mask_images_path", "w2c_matrix_path", "mvp_matrix_path")
     FUNCTION = "process_mesh"
     CATEGORY = "SeqTex"
 
-    def process_mesh(self, input_trimesh, y2z, y2x, z2x, upside_down, uv_size=1024, mv_size=512, enable_uv_preview=False):
+    def process_mesh(self, input_trimesh, y2z, y2x, z2x, upside_down, uv_size=1024, mv_size=512, enable_uv_preview=False, enable_xatlas = False, smooth_normals=True, fix_normals=True):
+
+        def smooth_normals_across_uv(mesh):
+            verts = input_trimesh.vertices  
+            verts = verts
+            unique_verts, inverse = np.unique(verts, axis=0, return_inverse=True)
+            merged_mesh = trimesh.Trimesh(vertices=unique_verts, faces=inverse[mesh.faces], process=False)
+            smooth_normals_merged = merged_mesh.vertex_normals
+            vertex_normals = smooth_normals_merged[inverse]
+            
+            return vertex_normals
+    
+        if fix_normals == True:
+            input_trimesh.fix_normals()
+
+        if smooth_normals == True:
+            smooth_normals_across_uv(input_trimesh)
+
         mesh = Mesh.__new__(Mesh)
         mesh._device = 'cuda'
         mesh._parts = None
         mesh._upside_down_applied = False
-        
+  
         mesh._v_pos = torch.tensor(input_trimesh.vertices, dtype=torch.float32)
         mesh._t_pos_idx = torch.tensor(input_trimesh.faces, dtype=torch.int32)
         mesh._v_normal = torch.tensor(input_trimesh.vertex_normals, dtype=torch.float32)
@@ -137,12 +166,14 @@ class SeqTex_Step1_ProcessMesh:
             mesh._v_tex = None
             mesh._t_tex_idx = None
 
-        mesh.to(mesh._device)
+   
         
-        if not mesh.has_uv:
+        if not mesh.has_uv and enable_xatlas is True:
             print(f"SeqTex Node: Input mesh has no UVs. Running xatlas parameterization...")
-            mesh.uv_xatlas_mapping()
+            mesh.uv_xatlas_mapping(size=uv_size)
+            input_trimesh.visual.uv = mesh.v_tex.cpu().numpy()
 
+        mesh.to(mesh._device)
         if y2z:
             mesh.vertex_transform()
         if y2x:
@@ -152,11 +183,12 @@ class SeqTex_Step1_ProcessMesh:
         if upside_down:
             mesh.vertex_transform_upsidedown()
 
+
         mesh.normalize()
         
         mvp_matrix, w2c = get_mvp_matrix(mesh)
         position_images, normal_images, mask_images = render_geo_views_tensor(mesh, mvp_matrix, img_size=(mv_size, mv_size))
-        position_map, normal_map = render_geo_map(mesh)
+        position_map, normal_map = render_geo_map(mesh, map_size=(uv_size,uv_size))
 
         print(f"Mesh processing completed.")
         position_map_path = save_tensor_to_file(position_map, prefix="position_map")
@@ -192,9 +224,9 @@ class SeqTex_Step1_ProcessMesh:
         mesh_export = trimesh.Trimesh(vertices=vertices_export, faces=faces, process=False)
         mesh_export.visual = trimesh.visual.TextureVisuals(uv=uvs, material=material)
 
-        bg_image = Image.new("RGB", (uv_size, uv_size), (0, 0, 0))
+        uv_preview_image = Image.new("RGB", (uv_size, uv_size), (0, 0, 0))
         def fast_uv_preview(uvs, faces, image_size=(512,512), background=(0,0,0), line_color=(255,255,255), line_width=1):
-            from PIL import ImageDraw
+            
             w, h = image_size
             img = Image.new("RGB", image_size, color=background)
             draw = ImageDraw.Draw(img)
@@ -209,13 +241,13 @@ class SeqTex_Step1_ProcessMesh:
             return img
 
         if mesh.has_uv and enable_uv_preview == True:
-            bg_image = fast_uv_preview(uvs, faces)
+            uv_preview_image = fast_uv_preview(uvs, faces, image_size=(uv_size,uv_size))
             print(f"Done Generating atlas")
                 
-        bg_image = pil2tensor(bg_image)
+        uv_preview_image = pil2tensor(uv_preview_image)
 
-        return (mesh_export, bg_image, position_map_path, normal_map_path, position_images_path,
-                    normal_images_path, mask_images_path, w2c_path, mvp_matrix_path,)
+        return (mesh_export, uv_preview_image, position_map_path, normal_map_path, position_images_path,
+                    normal_images_path, mask_images_path, w2c_path, mvp_matrix_path)
 
 
 class SeqTex_Step4_SaveMesh:
@@ -273,6 +305,12 @@ class SeqTex_Step4_SaveMesh:
         # Check if UVs exist
         if hasattr(trimesh_input.visual, "uv") and trimesh_input.visual.uv is not None:
             uv_coords = trimesh_input.visual.uv   # numpy array (N, 2)
+            texture_size = np.array(texture_map.size)   # (W, H)
+            uvs_pixel = uv_coords * texture_size
+
+            # Assign back (if you want them in pixel space — but note many renderers expect normalized [0,1])
+            trimesh_input.visual.uv = uvs_pixel
+
             print("UVs shape:", uv_coords.shape)
             print(uv_coords[:5])  # first few coords
         else:
@@ -280,9 +318,8 @@ class SeqTex_Step4_SaveMesh:
         
         trimesh_input.visual = trimesh.visual.TextureVisuals(uv=uv_coords,material=material)
 
-
-
-        
+        #merge vertices
+        trimesh_input.merge_vertices()
 
         from pathlib import Path
 
@@ -315,7 +352,7 @@ class SeqTex_Step2_GenerateCondition:
                 "steps": ("INT", {"default": 50, "min": 0, "max": 100}),
                 "edge_refinement": ("BOOLEAN", {"default": False}),
                 "cpu_offload": ("BOOLEAN", {"default": False}),
-                "model_type": (["SDXL", "CUSTOM"],),
+                "model_type": (["SDXL"],),
             }
         }
     
@@ -509,37 +546,37 @@ class SeqTex_TensorsToImages:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "position_images": ("STRING",),
-                "normal_images": ("STRING",),
-                "mask_images": ("STRING",),
-                "w2c_matrix": ("STRING",),
+                "position_images_path": ("STRING",),
+                "normal_images_path": ("STRING",),
+                "mask_images_path": ("STRING",),
+                "w2c_matrix_path": ("STRING",),
             }
         }
 
-    RETURN_TYPES = ("IMAGE","IMAGE",)
+    RETURN_TYPES = ("IMAGE","IMAGE","MASK",)
+    RETURN_NAMES = ("normal_mv_images", "depth_mv_images", "mask_mv_images")
     FUNCTION = "get_images"
     CATEGORY = "SeqTex"
 
-    def get_images(self, position_images, normal_images,mask_images,w2c_matrix):
+    def get_images(self, position_images_path, normal_images_path,mask_images_path,w2c_matrix_path):
 
         import torch.nn.functional as F
         import threading
 
 
-        if isinstance(position_images, str):
-            position_imgs = load_tensor_from_file(position_images, map_location="cuda")
-        if isinstance(normal_images, str):
-            normal_imgs = load_tensor_from_file(normal_images, map_location="cuda")
-        if isinstance(mask_images, str):
-            mask_imgs = load_tensor_from_file(mask_images, map_location="cuda")
-        if isinstance(w2c_matrix, str):
-            w2c = load_tensor_from_file(w2c_matrix, map_location="cuda")
+        if isinstance(position_images_path, str):
+            position_imgs = load_tensor_from_file(position_images_path, map_location="cuda")
+        if isinstance(normal_images_path, str):
+            normal_imgs = load_tensor_from_file(normal_images_path, map_location="cuda")
+        if isinstance(mask_images_path, str):
+            mask_imgs = load_tensor_from_file(mask_images_path, map_location="cuda")
+        if isinstance(w2c_matrix_path, str):
+            w2c = load_tensor_from_file(w2c_matrix_path, map_location="cuda")
 
         position_imgs = position_imgs.to("cuda")
         normal_imgs = normal_imgs.to("cuda")
         mask_imgs = mask_imgs.to("cuda")
         w2c = w2c.to("cuda")
-
 
         view_id_map = {
             0: "First View",
@@ -550,27 +587,24 @@ class SeqTex_TensorsToImages:
 
         depth_images = []
         normal_images = []
+        mask_images = []
+
         for i in range(4):
             view_id = str(view_id_map[i])
-            print(view_id)  # "First View", "Second View", "Third View"
 
             silhouette = get_silhouette_image(position_imgs, normal_imgs, mask_imgs=mask_imgs, w2c=w2c, selected_view=view_id)
             depth_img = pil2tensor(silhouette[0])
             depth_images.append(depth_img)
             normal_img = pil2tensor(silhouette[1])
             normal_images.append(normal_img)
-            
-            mask = silhouette[2]
+            mask_img = pil2tensor(silhouette[2])
+            mask_images.append(mask_img)
 
-        normal_images = torch.cat(normal_images, dim=0)  # -> [N, C, H, W]
+        normal_images = torch.cat(normal_images, dim=0)
         depth_images  = torch.cat(depth_images,  dim=0)
-
-
-        return normal_images, depth_images
-
-
-
-
+        mask_images  = torch.cat(mask_images,  dim=0)
+ 
+        return normal_images, depth_images, mask_images
 
 class SeqTex_Step3_GenerateTexture:
     @classmethod
@@ -585,28 +619,32 @@ class SeqTex_Step3_GenerateTexture:
                 "normal_map_path": ("STRING",),
                 "position_images_path": ("STRING",),
                 "normal_images_path": ("STRING",),
-                "condition_image": ("IMAGE",),
-                "condition_image2": ("IMAGE",),
-                "condition_image3": ("IMAGE",),
-                "condition_image4": ("IMAGE",),
+                "condition_image_front": ("IMAGE",),
                 "text_prompt": ("STRING", {"default": "a birdhouse"}),
                 "seed": ("INT", {"default": 42, "min": 0, "max": 0xffffffffffffffff}),
-                "selected_view": (["First View", "Second View", "Third View", "Fourth View"],),
                 "steps": ("INT", {"default": 30, "min": 0.0, "max": 100.0}),
                 "guidance_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 30.0}),
                 "uv_size": ("INT", {"default": 1024, "min": 0, "max": 8192}),
                 "mv_size": ("INT", {"default": 512, "min": 0, "max": 8192}),
                 "num_views": ("INT", {"default": 4, "min": 0, "max": 256}),
                 "uv_num_views":("INT", {"default": 1, "min": 0, "max": 256}),
+                "task": (["img2tex", "geo+mv2tex"], {"default": "img2tex"}),
+                "selected_view": (["First View", "Second View", "Third View", "Fourth View"],),
+            },
+            "optional": {
+                "condition_image_left": ("IMAGE", {"default": None}),
+                "condition_image_back": ("IMAGE", {"default": None}),
+                "condition_image_right": ("IMAGE", {"default": None}),
             }
         }
 
     RETURN_TYPES = ("IMAGE","IMAGE",)
+    RETURN_NAMES = ("uv_texture", "mv_preview",)
     FUNCTION = "generate_texture"
     CATEGORY = "SeqTex"
 
-    def generate_texture(self, seqtex_pipe, position_map_path, normal_map_path, position_images_path, normal_images_path, condition_image, condition_image2, condition_image3, condition_image4, text_prompt, seed, selected_view, negative_prompt=None, steps=30, guidance_scale=1.0, uv_size=1024, mv_size=512, num_views=4, uv_num_views=1):
-        #self._download_models()
+    def generate_texture(self, seqtex_pipe, position_map_path, normal_map_path, position_images_path, normal_images_path, condition_image_front, text_prompt, seed, selected_view, condition_image_left=None, condition_image_back=None, condition_image_right=None, negative_prompt=None, steps=30, guidance_scale=1.0, uv_size=1024, mv_size=512, num_views=4, uv_num_views=1, task="img2tex"):
+        
         cfg = Config()
         device="cuda"
         """
@@ -674,23 +712,40 @@ class SeqTex_Step3_GenerateTexture:
 
         num_frames = num_views * (2 ** sum(tex_pipe.vae.config.temperal_downsample))
         uv_num_frames = uv_num_views * (2 ** sum(tex_pipe.vae.config.temperal_downsample))
-                
-        from torch import cat
+        
         condition_images_list = []
-        for img in [condition_image, condition_image2, condition_image3, condition_image4]:
-            img = tensor2pil(img)
+
+        if task != "img2tex":
+            # ensure all 4 images are provided
+            assert all(img is not None for img in [
+                condition_image_front, condition_image_left, condition_image_back, condition_image_right]
+            ), "You must provide all four condition images"
+
+            for img in [condition_image_front, condition_image_left, condition_image_back, condition_image_right]:
+                img = tensor2pil(img)
+                img = img.resize((mv_size, mv_size), Image.NEAREST)
+                img_tensor = convert_img_to_tensor(img, device="cpu").unsqueeze(0).unsqueeze(0)
+                condition_images_list.append(img_tensor)
+
+            # free memory
+            del condition_image_front, condition_image_left, condition_image_back, condition_image_right
+
+        else:
+            if condition_image_front is None:
+                raise ValueError("You must provide a front condition image for img2tex task")
+
+            img = tensor2pil(condition_image_front)
             img = img.resize((mv_size, mv_size), Image.NEAREST)
             img_tensor = convert_img_to_tensor(img, device="cpu").unsqueeze(0).unsqueeze(0)
             condition_images_list.append(img_tensor)
 
-        # Stack along batch dimension
-        condition_images = torch.cat(condition_images_list, dim=0)  # [4, C, H, W]
+            del condition_image_front  # free memory for consistency
 
- 
+        # concatenate once
+        condition_images = torch.cat(condition_images_list, dim=0)     
         gt_latents = encode_images(condition_images, encode_as_first=True)
-        
-        del condition_image
-        del condition_image2
+
+        del condition_images
   
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -724,7 +779,8 @@ class SeqTex_Step3_GenerateTexture:
             gt_condition=gt_latents,
             inference_img_cond_frame=view_id,
             use_qk_geometry=True,
-            task_type="geo+mv2tex",#"geo+mv2tex", # img2tex
+            max_sequence_length=1024,
+            task_type=task,#"geo+mv2tex", # img2tex
             progress=progress_callback,
         ).frames
 
@@ -758,11 +814,9 @@ class SeqTex_Step3_GenerateTexture:
             torch.cuda.empty_cache()
 
         print(f"Texture generated successfully.")
-        #uv_map_pred_path = save_tensor_to_file(uv_map_pred, prefix="uv_map_pred")
-
+        uv_map_pred_path = save_tensor_to_file(uv_map_pred, prefix="uv_map_pred")
         uv_map_pred_cpu = uv_map_pred.cpu()
 
-        
         mv_out_cpu = mv_out.cpu()
         del uv_map_pred, mv_out
         if torch.cuda.is_available():
@@ -775,6 +829,7 @@ class SeqTex_Step3_GenerateTexture:
 
         uv_map_pred_cpu = pil2tensor(uv_map_pred_cpu)
         mv_out_cpu = pil2tensor(mv_out_cpu)
+
         return uv_map_pred_cpu, mv_out_cpu,
 
 
@@ -790,7 +845,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "SeqTex_TensorsToImages": "SeqTex Tensors to Images",
+    "SeqTex_TensorsToImages": "SeqTex Tensors to MV",
     "SeqTex_Load_Mesh": "SeqTex Load Mesh",
     "SeqTex_Loader": "SeqTex Loader",
     "SeqTex_Step1_ProcessMesh": "SeqTex Step 1: Process Mesh",

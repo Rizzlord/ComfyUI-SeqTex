@@ -2,7 +2,7 @@ import os
 import threading
 from dataclasses import dataclass
 from urllib.parse import urlparse
-
+from tqdm import tqdm
 import gradio as gr
 import numpy as np
 import spaces
@@ -13,12 +13,11 @@ from einops import rearrange
 from jaxtyping import Float
 from PIL import Image
 from torch import Tensor
+from . import tensor_to_pil
+from .file_utils import save_tensor_to_file, load_tensor_from_file
 
 from ..wan.pipeline_wan_t2tex_extra import WanT2TexPipeline
 from ..wan.wan_t2tex_transformer_3d_extra import WanT2TexTransformer3DModel
-
-from . import tensor_to_pil
-from .file_utils import save_tensor_to_file, load_tensor_from_file
 
 TEX_PIPE = None
 VAE = None
@@ -49,7 +48,7 @@ class Config:
 
 cfg = Config()
 
-def get_seqtex_pipe():
+def get_seqtex_pipe(min_noise_level_index, flow_shift):
     """
     Lazy load the SeqTex pipeline for texture generation.
     Must be called within @spaces.GPU context.
@@ -70,11 +69,13 @@ def get_seqtex_pipe():
             print("!!! Please set the SEQTEX_SPACE_TOKEN environment variable with your token. !!!")
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
+        # Load transformer with auto-configured LoRA adapter first (CPU by default)
         transformer = WanT2TexTransformer3DModel.from_pretrained(
             cfg.seqtex_transformer_path,
             token=auth_token
         )
 
+        # Pipeline - pass the pre-loaded transformer to avoid re-loading
         TEX_PIPE = WanT2TexPipeline.from_pretrained(
             cfg.video_base_name,
             transformer=transformer,
@@ -123,12 +124,12 @@ def get_seqtex_pipe():
 
         scheduler: FlowMatchEulerDiscreteScheduler = (
             FlowMatchEulerDiscreteScheduler.from_config(
-                TEX_PIPE.scheduler.config, shift=cfg.flow_shift
+                TEX_PIPE.scheduler.config, shift=flow_shift
             )
         )
-        min_noise_level_index = scheduler.config.num_train_timesteps - cfg.min_noise_level_index
-        setattr(TEX_PIPE, "min_noise_level_index", min_noise_level_index)
-        min_noise_level_timestep = scheduler.timesteps[min_noise_level_index]
+        min_noise_level_index_result = scheduler.config.num_train_timesteps - min_noise_level_index
+        setattr(TEX_PIPE, "min_noise_level_index", min_noise_level_index_result)
+        min_noise_level_timestep = scheduler.timesteps[min_noise_level_index_result]
         setattr(TEX_PIPE, "min_noise_level_timestep", min_noise_level_timestep)
         setattr(TEX_PIPE, "min_noise_level_sigma", min_noise_level_timestep / 1000.)
 
@@ -164,8 +165,11 @@ def encode_images(
 
         for b in range(B):
             latents_frames = []
-            for f0 in range(0, F, chunk):
+
+            # tqdm over frame chunks
+            for f0 in tqdm(range(0, F, chunk), desc=f"Encoding batch {b+1}/{B}", leave=False):
                 f1 = min(F, f0 + chunk)
+
                 # chunk to device
                 img_chunk = images[b, f0:f1]  # CPU
                 img_chunk = rearrange(img_chunk, "F H W C -> F C 1 H W").to(target_device, non_blocking=True)
@@ -196,6 +200,7 @@ def encode_images(
                 torch.cuda.empty_cache()
 
         return latents_out
+
     else:
         raise NotImplementedError("Currently only support encode as first frame.")
 
@@ -349,6 +354,8 @@ def generate_texture_b(position_map_path, normal_map_path, position_images_path,
     else:
         print(f"could not find input ref image")
     gt_latents = (encode_images(condition_image, encode_as_first=True), None)
+
+
 
     del condition_image
     if torch.cuda.is_available():

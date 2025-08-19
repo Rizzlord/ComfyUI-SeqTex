@@ -318,15 +318,25 @@ class WanT2TexTransformerBlock(nn.Module):
         assert hidden_states.shape[1] == n_mv + n_uv, f"hidden_states shape {hidden_states.shape} is not equal to {n_mv + n_uv}"
         mv_hidden_states, uv_hidden_states = hidden_states[:, :n_mv], hidden_states[:, n_mv:]
 
+
+
         # 1. Self-attention
         mv_norm_hidden_states = (self.norm1(mv_hidden_states.float()) * (1 + scale_msa) + shift_msa).type_as(mv_hidden_states)
         uv_norm_hidden_states = (self.norm1(uv_hidden_states.float()) * (1 + scale_msa_uv) + shift_msa_uv).type_as(uv_hidden_states)
+
 
         mv_attn_output = self.attn1(hidden_states=mv_norm_hidden_states, rotary_emb=rotary_emb[:, :, :n_mv], attention_mask=attn_bias, geometry_embedding=geometry_embedding[:, :n_mv])
         mv_hidden_states = (mv_hidden_states.float() + mv_attn_output * gate_msa).type_as(mv_hidden_states)
         uv_attn_output = self.attnuv(hidden_states=uv_norm_hidden_states, encoder_hidden_states=torch.cat([mv_hidden_states, uv_norm_hidden_states], dim=1), 
                                       rotary_emb=(rotary_emb[:, :, n_mv:], rotary_emb), geometry_embedding=(geometry_embedding[:, n_mv:], geometry_embedding))
+        
+
         uv_hidden_states = (uv_hidden_states.float() + uv_attn_output * gate_msa_uv).type_as(uv_hidden_states)
+
+
+      
+
+
 
         # 2. Cross-attention
         mv_norm_hidden_states = self.norm2(mv_hidden_states.float()).type_as(mv_hidden_states)
@@ -478,6 +488,7 @@ class WanT2TexTransformer3DModel(WanTransformer3DModel):
             return_dict: bool = True,
             attention_kwargs: Optional[Dict[str, Any]] = None,
             use_qk_geometry: Optional[bool] = False,
+
         ) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         if attention_kwargs is not None:
             attention_kwargs = attention_kwargs.copy()
@@ -547,8 +558,7 @@ class WanT2TexTransformer3DModel(WanTransformer3DModel):
             for block in self.blocks:
                 hidden_states = self._gradient_checkpointing_func(
                     block, hidden_states, encoder_hidden_states, timestep_proj, rotary_emb, 
-                    attn_bias, geometry_embedding, (post_patch_num_frames, post_patch_height, post_patch_width, post_uv_num_frames, post_uv_height, post_uv_width)
-                )
+                    attn_bias, geometry_embedding, (post_patch_num_frames, post_patch_height, post_patch_width, post_uv_num_frames, post_uv_height, post_uv_width))
         else:
             for block in self.blocks:
                 hidden_states = block(hidden_states, encoder_hidden_states, timestep_proj, rotary_emb, 

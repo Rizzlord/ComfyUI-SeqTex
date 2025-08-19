@@ -129,7 +129,7 @@ def camera_strategy_test_4_90deg(
         mesh: Dict,
         num_views: int = 4,
         **kwargs) -> Dict:
-    default_elevation = 10
+    default_elevation = 25
     default_camera_lens = 50
     default_camera_sensor_width = 36
     default_fovy = 2 * np.arctan(default_camera_sensor_width / (2 * default_camera_lens))

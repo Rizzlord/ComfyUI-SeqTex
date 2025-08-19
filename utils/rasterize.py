@@ -50,8 +50,8 @@ class NVDiffRasterizerContext:
         resolution: Union[int, Tuple[int, int]],
     ):
         # rasterize in instance mode (single topology)
-        pos = pos.to(device="cuda", dtype=torch.float32)
-        tri = tri.to(device="cuda", dtype=torch.int32)
+        pos = pos.to(device="cuda")
+        tri = tri.to(device="cuda")
         print(f"pos tri on CUDA")
         return dr.rasterize(self.ctx, pos.float(), tri.int(), resolution, grad_db=True)
 
@@ -61,8 +61,8 @@ class NVDiffRasterizerContext:
         tri: Integer[Tensor, "Nf 3"],
         resolution: Union[int, Tuple[int, int]],
     ):
-        pos = pos.to(device="cuda", dtype=torch.float32)
-        tri = tri.to(device="cuda", dtype=torch.int32)
+        pos = pos.to(device="cuda" )
+        tri = tri.to(device="cuda")
         print(f"pos tri on CUDA")
         # rasterize one single mesh under a single viewpoint
         rast, rast_db = self.rasterize(pos[None, ...], tri, resolution)
@@ -76,8 +76,8 @@ class NVDiffRasterizerContext:
         tri: Integer[Tensor, "Nf 3"],
     ) -> Float[Tensor, "B H W C"]:
         
-        pos = pos.to(device="cuda", dtype=torch.float32)
-        tri = tri.to(device="cuda", dtype=torch.int32)
+        pos = pos.to(device="cuda")
+        tri = tri.to(device="cuda")
         print(f"pos tri on CUDA")
     
         return dr.antialias(color.float(), rast, pos.float(), tri.int())
@@ -90,9 +90,9 @@ class NVDiffRasterizerContext:
         rast_db=None,
         diff_attrs=None,
     ) -> Float[Tensor, "B H W C"]:
-        tri = tri.to(device="cuda", dtype=torch.int32)
+        tri = tri.to(device="cuda")
         rast = rast.to(device="cuda")
-        attr = attr.to("cuda", dtype=torch.float32)
+        attr = attr.to("cuda")
         print(f"pos tri on CUDA")
         return dr.interpolate(
             attr.float(), rast, tri.int(), rast_db=rast_db, diff_attrs=diff_attrs
@@ -106,8 +106,8 @@ class NVDiffRasterizerContext:
         rast_db=None,
         diff_attrs=None,
     ) -> Float[Tensor, "B H W C"]:
-        tri = tri.to(device="cuda", dtype=torch.int32)
-        attr = attr.to("cuda", dtype=torch.float32)
+        tri = tri.to(device="cuda")
+        attr = attr.to("cuda")
         print(f"pos tri on CUDA")
         return self.interpolate(attr[None, ...], rast, tri, rast_db, diff_attrs)
 

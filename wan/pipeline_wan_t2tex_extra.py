@@ -123,7 +123,7 @@ class WanT2TexPipeline(WanPipeline):
         inference_img_cond_frame=None,
         use_qk_geometry=False,
         task_type="all",
-        progress=None
+        progress=None,
     ):
         r"""
         The call function to the pipeline for generation.
@@ -301,17 +301,15 @@ class WanT2TexPipeline(WanPipeline):
             sigmas = rearrange(sigmas, "(B F) -> B 1 F 1 1", B=batch_size)
             match task_type:
                 case "geo+mv2tex":
-                    # Optionally set minimum noise levels for first frames
+                    #easymode
                     min_frames = 4
                     timestep_df[:, :min_frames] = self.min_noise_level_timestep
                     sigmas[:, :, :min_frames, ...] = self.min_noise_level_sigma
 
-                    # Generate random noise for all frames
                     mv_noise = randn_tensor(mv_latents[:, :, :min_frames].shape, generator=generator, device=device, dtype=self.dtype)
-
-                    # Assign condition frames
+ 
                     for idx, cond_img in enumerate(gt_condition):
-                        frame_idx = idx  # map first condition to first frame, etc.
+                        frame_idx = idx
                         mv_latents[:, :, frame_idx:frame_idx+1, ...] = (
                             (1.0 - sigmas[:, :, frame_idx:frame_idx+1, ...]) * cond_img +
                             sigmas[:, :, frame_idx:frame_idx+1, ...] * mv_noise[:, :, frame_idx:frame_idx+1, ...]
@@ -354,7 +352,7 @@ class WanT2TexPipeline(WanPipeline):
                 attention_kwargs=attention_kwargs,
                 # task_cond=multi_task_cond,
                 return_dict=False,
-                use_qk_geometry=use_qk_geometry
+                use_qk_geometry=use_qk_geometry,
             )[0]
             mv_noise_out, uv_noise_out = noise_out
 

@@ -144,7 +144,7 @@ class Mesh:
     def has_uv(self):
         return self.v_tex is not None
     
-    def uv_xatlas_mapping(self, xatlas_chart_options: dict = {}, xatlas_pack_options: dict = {}):
+    def uv_xatlas_mapping(self, size=1024, xatlas_chart_options: dict = {}, xatlas_pack_options: dict = {}):
         atlas = xatlas.Atlas()
         v_pos_np = self.v_pos.detach().cpu().numpy()
         t_pos_idx_np = self.t_pos_idx.cpu().numpy()
@@ -153,7 +153,7 @@ class Mesh:
         co = xatlas.ChartOptions()
         po = xatlas.PackOptions()
         if 'resolution' not in xatlas_pack_options:
-            po.resolution = 1024
+            po.resolution = size
         if 'padding' not in xatlas_pack_options:
             po.padding = 2
         for k, v in xatlas_chart_options.items():
