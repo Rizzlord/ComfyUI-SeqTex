@@ -128,10 +128,13 @@ def get_c2w(
 def camera_strategy_test_4_90deg(
         mesh: Dict,
         num_views: int = 4,
+        default_elevation: int = 30,
+        default_camera_lens: int = 50,
+        default_camera_sensor_width: int = 36,
         **kwargs) -> Dict:
-    default_elevation = 25
-    default_camera_lens = 50
-    default_camera_sensor_width = 36
+    #default_elevation = 25
+    #default_camera_lens = 50
+    #default_camera_sensor_width = 36
     default_fovy = 2 * np.arctan(default_camera_sensor_width / (2 * default_camera_lens))
 
     bbox_size = mesh.v_pos.max(dim=0)[0] - mesh.v_pos.min(dim=0)[0]
@@ -209,11 +212,14 @@ def _get_mvp_matrix(
     mvp_mtx = proj_mtx @ w2c
     return mvp_mtx
 
-def get_mvp_matrix(mesh, num_views=4, width=512, height=512, strategy="strategy_test_4_90deg"):
+def get_mvp_matrix(mesh, default_elevation, default_camera_lens, default_camera_sensor_width, num_views=4, width=512, height=512, strategy="strategy_test_4_90deg"):
     if strategy == "strategy_test_4_90deg":
         camera_info = camera_strategy_test_4_90deg(
             mesh=mesh,
             num_views=num_views,
+            default_elevation=default_elevation,
+            default_camera_lens=default_camera_lens,
+            default_camera_sensor_width=default_camera_sensor_width,
         )
         cond_sup_fovy = camera_info["cond_sup_fovy"]
         cond_sup_c2w = camera_info["cond_sup_c2w"]

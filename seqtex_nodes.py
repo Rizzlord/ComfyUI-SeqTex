@@ -119,6 +119,9 @@ class SeqTex_Step1_ProcessMesh:
                 "enable_uv_preview": ("BOOLEAN", {"default": False}),
                 "smooth_normals": ("BOOLEAN", {"default": True}),
                 "fix_normals": ("BOOLEAN", {"default": True}),
+                "camera_elevation": ("INT", {"default": 25}),
+                "camera_lens": ("INT", {"default": 50}),
+                "camera_sensor_width": ("INT", {"default": 36})
             },
             "optional": {
                 "uv_preview": ("IMAGE"),
@@ -131,7 +134,7 @@ class SeqTex_Step1_ProcessMesh:
     FUNCTION = "process_mesh"
     CATEGORY = "SeqTex"
 
-    def process_mesh(self, input_trimesh, y2z, y2x, z2x, upside_down, uv_size=1024, mv_size=512, enable_uv_preview=False, enable_xatlas = False, smooth_normals=True, fix_normals=True):
+    def process_mesh(self, input_trimesh, y2z, y2x, z2x, upside_down, uv_size=1024, mv_size=512, enable_uv_preview=False, enable_xatlas = False, smooth_normals=True, fix_normals=True, camera_elevation=30, camera_lens=50, camera_sensor_width=36):
 
         def smooth_normals_across_uv(mesh):
             verts = input_trimesh.vertices  
@@ -186,7 +189,7 @@ class SeqTex_Step1_ProcessMesh:
 
         mesh.normalize()
         
-        mvp_matrix, w2c = get_mvp_matrix(mesh)
+        mvp_matrix, w2c = get_mvp_matrix(mesh, default_elevation=camera_elevation, default_camera_lens=camera_lens, default_camera_sensor_width=camera_sensor_width, width=mv_size, height=mv_size)
         position_images, normal_images, mask_images = render_geo_views_tensor(mesh, mvp_matrix, img_size=(mv_size, mv_size))
         position_map, normal_map = render_geo_map(mesh, map_size=(uv_size,uv_size))
 
