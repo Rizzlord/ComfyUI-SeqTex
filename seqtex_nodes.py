@@ -168,7 +168,7 @@ class SeqTex_Step1_ProcessMesh:
 
    
         
-        if not mesh.has_uv and enable_xatlas is True:
+        if enable_xatlas is True:
             print(f"SeqTex Node: Input mesh has no UVs. Running xatlas parameterization...")
             mesh.uv_xatlas_mapping(size=uv_size)
             input_trimesh.visual.uv = mesh.v_tex.cpu().numpy()
