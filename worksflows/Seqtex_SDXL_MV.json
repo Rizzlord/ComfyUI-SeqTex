@@ -133,46 +133,6 @@
       ]
     },
     {
-      "id": 221,
-      "type": "CLIPTextEncode",
-      "pos": [
-        -3719.776123046875,
-        1170.7646484375
-      ],
-      "size": [
-        400,
-        200
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "link": 763
-        }
-      ],
-      "outputs": [
-        {
-          "name": "CONDITIONING",
-          "type": "CONDITIONING",
-          "links": [
-            742
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.49",
-        "Node name for S&R": "CLIPTextEncode",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "incsonsistent, poor, low quality, non uniform, background"
-      ]
-    },
-    {
       "id": 217,
       "type": "KSampler",
       "pos": [
@@ -845,50 +805,6 @@
       "widgets_values": []
     },
     {
-      "id": 187,
-      "type": "easy imageSplitGrid",
-      "pos": [
-        -2040.44921875,
-        869.2544555664062
-      ],
-      "size": [
-        270,
-        82
-      ],
-      "flags": {},
-      "order": 28,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 750
-        }
-      ],
-      "outputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "links": [
-            667,
-            674,
-            675,
-            676
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-easy-use",
-        "ver": "93254a4c073431ad45be5bef0e66bd38f40a2583",
-        "Node name for S&R": "easy imageSplitGrid",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        1,
-        2
-      ]
-    },
-    {
       "id": 254,
       "type": "PreviewImage",
       "pos": [
@@ -1524,12 +1440,12 @@
         "ver": "0.3.49",
         "Node name for S&R": "Preview3D",
         "widget_ue_connectable": {},
-        "Last Time Model File": "SeqTex__00134_.glb",
+        "Last Time Model File": "SeqTex__00135_.glb",
         "Camera Info": {
           "position": {
-            "x": 4.876254602956703,
-            "y": 2.952896416860135,
-            "z": 4.499326445756198
+            "x": 14.046561179818625,
+            "y": 4.8631643708920596,
+            "z": 2.699340971949499
           },
           "target": {
             "x": 0,
@@ -1541,163 +1457,8 @@
         }
       },
       "widgets_values": [
-        "SeqTex__00134_.glb",
+        "SeqTex__00135_.glb",
         ""
-      ]
-    },
-    {
-      "id": 52,
-      "type": "PreviewImage",
-      "pos": [
-        -1534.5562744140625,
-        -860.9015502929688
-      ],
-      "size": [
-        1114.9029541015625,
-        348.8406982421875
-      ],
-      "flags": {},
-      "order": 40,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 1137
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.49",
-        "Node name for S&R": "PreviewImage",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": []
-    },
-    {
-      "id": 266,
-      "type": "SeqTex_Step3_GenerateTexture",
-      "pos": [
-        -2645.826171875,
-        -1351.4451904296875
-      ],
-      "size": [
-        306.9126892089844,
-        474
-      ],
-      "flags": {},
-      "order": 36,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "seqtex_pipe",
-          "type": "SEQTEX_PIPE",
-          "link": 1128
-        },
-        {
-          "name": "condition_image_front",
-          "type": "IMAGE",
-          "link": 1241
-        },
-        {
-          "name": "condition_image_left",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 1242
-        },
-        {
-          "name": "condition_image_back",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 1243
-        },
-        {
-          "name": "condition_image_right",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 1244
-        },
-        {
-          "name": "position_map_path",
-          "type": "STRING",
-          "widget": {
-            "name": "position_map_path"
-          },
-          "link": 1186
-        },
-        {
-          "name": "normal_map_path",
-          "type": "STRING",
-          "widget": {
-            "name": "normal_map_path"
-          },
-          "link": 1187
-        },
-        {
-          "name": "position_images_path",
-          "type": "STRING",
-          "widget": {
-            "name": "position_images_path"
-          },
-          "link": 1190
-        },
-        {
-          "name": "normal_images_path",
-          "type": "STRING",
-          "widget": {
-            "name": "normal_images_path"
-          },
-          "link": 1193
-        },
-        {
-          "name": "text_prompt",
-          "type": "STRING",
-          "widget": {
-            "name": "text_prompt"
-          },
-          "link": 1134
-        }
-      ],
-      "outputs": [
-        {
-          "name": "uv_texture",
-          "type": "IMAGE",
-          "links": [
-            1135,
-            1136
-          ]
-        },
-        {
-          "name": "mv_preview",
-          "type": "IMAGE",
-          "links": [
-            1137
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "Rizzlord/ComfyUI-SeqTex",
-        "ver": "b2dcb55e67e340e7645020c094de6ea12d59a13a",
-        "Node name for S&R": "SeqTex_Step3_GenerateTexture",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "",
-        "",
-        "",
-        "",
-        "a birdhouse",
-        0,
-        "fixed",
-        30,
-        1,
-        2048,
-        512,
-        4,
-        1,
-        "img2tex",
-        "First View"
       ]
     },
     {
@@ -1792,35 +1553,6 @@
       ]
     },
     {
-      "id": 279,
-      "type": "PreviewImage",
-      "pos": [
-        -904.9797973632812,
-        144.1988067626953
-      ],
-      "size": [
-        395.9324645996094,
-        354.7872314453125
-      ],
-      "flags": {},
-      "order": 33,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 1246
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.49",
-        "widget_ue_connectable": {},
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
       "id": 280,
       "type": "PreviewImage",
       "pos": [
@@ -1847,7 +1579,8 @@
         "ver": "0.3.49",
         "widget_ue_connectable": {},
         "Node name for S&R": "PreviewImage"
-      }
+      },
+      "widgets_values": []
     },
     {
       "id": 281,
@@ -1876,7 +1609,8 @@
         "ver": "0.3.49",
         "widget_ue_connectable": {},
         "Node name for S&R": "PreviewImage"
-      }
+      },
+      "widgets_values": []
     },
     {
       "id": 282,
@@ -1905,7 +1639,8 @@
         "ver": "0.3.49",
         "widget_ue_connectable": {},
         "Node name for S&R": "PreviewImage"
-      }
+      },
+      "widgets_values": []
     },
     {
       "id": 192,
@@ -2028,6 +1763,275 @@
       },
       "widgets_values": [
         4
+      ]
+    },
+    {
+      "id": 266,
+      "type": "SeqTex_Step3_GenerateTexture",
+      "pos": [
+        -2645.826171875,
+        -1351.4451904296875
+      ],
+      "size": [
+        306.9126892089844,
+        474
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "seqtex_pipe",
+          "type": "SEQTEX_PIPE",
+          "link": 1128
+        },
+        {
+          "name": "condition_image_front",
+          "type": "IMAGE",
+          "link": 1241
+        },
+        {
+          "name": "condition_image_left",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 1242
+        },
+        {
+          "name": "condition_image_back",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 1243
+        },
+        {
+          "name": "condition_image_right",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 1244
+        },
+        {
+          "name": "position_map_path",
+          "type": "STRING",
+          "widget": {
+            "name": "position_map_path"
+          },
+          "link": 1186
+        },
+        {
+          "name": "normal_map_path",
+          "type": "STRING",
+          "widget": {
+            "name": "normal_map_path"
+          },
+          "link": 1187
+        },
+        {
+          "name": "position_images_path",
+          "type": "STRING",
+          "widget": {
+            "name": "position_images_path"
+          },
+          "link": 1190
+        },
+        {
+          "name": "normal_images_path",
+          "type": "STRING",
+          "widget": {
+            "name": "normal_images_path"
+          },
+          "link": 1193
+        },
+        {
+          "name": "text_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "text_prompt"
+          },
+          "link": 1134
+        }
+      ],
+      "outputs": [
+        {
+          "name": "uv_texture",
+          "type": "IMAGE",
+          "links": [
+            1135,
+            1136
+          ]
+        },
+        {
+          "name": "mv_preview",
+          "type": "IMAGE",
+          "links": [
+            1137
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "Rizzlord/ComfyUI-SeqTex",
+        "ver": "b2dcb55e67e340e7645020c094de6ea12d59a13a",
+        "Node name for S&R": "SeqTex_Step3_GenerateTexture",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "",
+        "",
+        "",
+        "",
+        "a birdhouse",
+        0,
+        "fixed",
+        30,
+        1,
+        2048,
+        512,
+        4,
+        1,
+        "geo+mv2tex",
+        "First View"
+      ]
+    },
+    {
+      "id": 52,
+      "type": "PreviewImage",
+      "pos": [
+        -1534.5562744140625,
+        -860.9015502929688
+      ],
+      "size": [
+        1114.9029541015625,
+        348.8406982421875
+      ],
+      "flags": {},
+      "order": 40,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 1137
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.49",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 221,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -3719.776123046875,
+        1170.7646484375
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 763
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            742
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.49",
+        "Node name for S&R": "CLIPTextEncode",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "inconsistent, poor, low quality, non uniform, background"
+      ]
+    },
+    {
+      "id": 279,
+      "type": "PreviewImage",
+      "pos": [
+        -904.9797973632812,
+        144.1988067626953
+      ],
+      "size": [
+        395.9324645996094,
+        354.7872314453125
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 1246
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.49",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 187,
+      "type": "easy imageSplitGrid",
+      "pos": [
+        -2040.44921875,
+        869.2544555664062
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 750
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            667,
+            674,
+            675,
+            676
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "93254a4c073431ad45be5bef0e66bd38f40a2583",
+        "Node name for S&R": "easy imageSplitGrid",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        2,
+        2
       ]
     }
   ],
@@ -2589,10 +2593,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.2099283210943812,
+      "scale": 0.9646149645000096,
       "offset": [
-        6002.716198229505,
-        2206.1141617309095
+        2275.6956290242774,
+        -212.07056124335406
       ]
     },
     "frontendVersion": "1.24.4",
