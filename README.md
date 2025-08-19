@@ -5,6 +5,12 @@
 **New Features!!!**
  - 19.08.2025: Added support for Multi-view Image Input including SDXL workflow example
 
+## Installation
+
+```
+git clone https://github.com/Rizzlord/ComfyUI-SeqTex
+[path_to_python_embeded]/python.exe -m pip install -r requirements.txt
+```
 ## Authors
 
 [Rizzlord](https://github.com/Rizzlord)
