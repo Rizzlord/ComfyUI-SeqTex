@@ -1,9 +1,9 @@
 # SeqTex ComfyUI Wrapper
-## SeqTex: Generate Mesh Textures in Video Sequence
-([Arxiv Paper](https://arxiv.org/abs/2507.04285))
+## [VAST-AI](https://huggingface.co/spaces/VAST-AI) SeqTex: Generate Mesh Textures in Video Sequence
+([Arxiv Paper](https://arxiv.org/abs/2507.04285)) ([HuggingFace](https://huggingface.co/spaces/VAST-AI/SeqTex))
 
 **New Features!!!**
- - 19.08.2025 Added support for Multi-view Image Input including SDXL workflow example
+ - 19.08.2025: Added support for Multi-view Image Input including SDXL workflow example
 
 ## Authors
 
