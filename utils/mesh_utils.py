@@ -192,7 +192,7 @@ class Mesh:
         vertices[:, 1] = -pre_vertices[:, 2]
         vertices[:, 2] = pre_vertices[:, 1]
         
-        self.v_normal = pre_normals
+        self.v_normal = normals
         self.v_pos = vertices
 
     def vertex_transform_y2x(self):

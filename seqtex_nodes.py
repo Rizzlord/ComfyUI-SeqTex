@@ -26,30 +26,11 @@ from .utils import tensor_to_pil
 import trimesh 
 from PIL import ImageDraw
 
-@dataclass
-class Config:
-    video_base_name: str = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
-    seqtex_transformer_path: str = "VAST-AI/SeqTex-Transformer"
-    min_noise_level_index: int = 15
-
-    num_views: int = 4
-    uv_num_views: int = 1
-    mv_height: int = 512
-    mv_width: int = 512
-    uv_height: int = 1024
-    uv_width: int = 1024
-
-    flow_shift: float = 5.0
-    eval_guidance_scale: float = 1.0
-    eval_num_inference_steps: int = 5
-    eval_seed: int = 42
-
 def tensor2pil(image):
     return Image.fromarray(np.clip(255. * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8))
 
 def pil2tensor(image):
     return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
-
 
 seqtex_global_pipe = None
 
@@ -664,6 +645,7 @@ class SeqTex_Step3_GenerateTexture:
                 "uv_num_views":("INT", {"default": 1, "min": 0, "max": 256}),
                 "task": (["img2tex", "geo+mv2tex"], {"default": "img2tex"}),
                 "selected_view": (["First View", "Second View", "Third View", "Fourth View"],),
+                #"cpu_offload": ("BOOLEAN", {"default": False}),
             },
             "optional": {
                 "condition_image_left": ("IMAGE", {"default": None}),
@@ -679,7 +661,6 @@ class SeqTex_Step3_GenerateTexture:
 
     def generate_texture(self, seqtex_pipe, position_map_path, normal_map_path, position_images_path, normal_images_path, condition_image_front, text_prompt, seed, selected_view, condition_image_left=None, condition_image_back=None, condition_image_right=None, negative_prompt=None, steps=30, guidance_scale=1.0, uv_size=1024, mv_size=512, num_views=4, uv_num_views=1, task="img2tex"):
         
-        cfg = Config()
         device="cuda"
         """
         Use SeqTex to generate texture for the mesh based on the image condition.

@@ -399,7 +399,7 @@ class WanT2TexTransformer3DModel(WanTransformer3DModel):
             eps=eps,
             image_dim=image_dim,
             added_kv_proj_dim=added_kv_proj_dim,
-            rope_max_seq_len=rope_max_seq_len
+            rope_max_seq_len=2048
         )
         # 1. Patch & position embedding
         self.rope = WanRotaryPosEmbed(self.rope.attention_head_dim, self.rope.patch_size, self.rope.max_seq_len)
