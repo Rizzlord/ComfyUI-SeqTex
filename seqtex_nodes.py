@@ -135,19 +135,38 @@ class SeqTex_Step1_ProcessMesh:
     CATEGORY = "SeqTex"
 
     def process_mesh(self, input_trimesh, y2z, y2x, z2x, upside_down, uv_size=1024, mv_size=512, enable_uv_preview=False, enable_xatlas = False, smooth_normals=True, fix_normals=True, camera_elevation=30, camera_lens=50, camera_sensor_width=36):
-
+        
         def smooth_normals_across_uv(mesh):
-            verts = input_trimesh.vertices  
-            verts = verts
+            """
+            Smooth normals across duplicated vertices caused by UV seams.
+            mesh: trimesh.Trimesh with attributes vertices, faces, and vertex normals
+            """
+            verts = mesh.vertices
+            normals = mesh.vertex_normals
+
+            # Find unique vertex positions (merge duplicates)
             unique_verts, inverse = np.unique(verts, axis=0, return_inverse=True)
-            merged_mesh = trimesh.Trimesh(vertices=unique_verts, faces=inverse[mesh.faces], process=False)
-            smooth_normals_merged = merged_mesh.vertex_normals
-            vertex_normals = smooth_normals_merged[inverse]
-            
-            return vertex_normals
+
+            # Accumulate normals per unique vertex
+            smooth_normals = np.zeros_like(unique_verts)
+            counts = np.zeros(len(unique_verts), dtype=np.int32)
+
+            for i, idx in enumerate(inverse):
+                smooth_normals[idx] += normals[i]
+                counts[idx] += 1
+
+            smooth_normals /= counts[:, None]
+            smooth_normals = smooth_normals / np.linalg.norm(smooth_normals, axis=1, keepdims=True)
+
+            # Map back to original vertex order
+            vertex_normals = smooth_normals[inverse]
+
+            return torch.tensor(vertex_normals, dtype=torch.float32)
     
         if fix_normals == True:
             input_trimesh.fix_normals()
+
+      
 
         if smooth_normals == True:
             smooth_normals_across_uv(input_trimesh)
@@ -170,6 +189,8 @@ class SeqTex_Step1_ProcessMesh:
             mesh._t_tex_idx = None
 
    
+        if mesh._v_tex is None:
+            raise AssertionError("Your mesh is missing UVs. Enable xatlas or manually UV your input mesh.")
         
         if enable_xatlas is True:
             print(f"SeqTex Node: Input mesh has no UVs. Running xatlas parameterization...")
@@ -188,6 +209,8 @@ class SeqTex_Step1_ProcessMesh:
 
 
         mesh.normalize()
+
+
         
         mvp_matrix, w2c = get_mvp_matrix(mesh, default_elevation=camera_elevation, default_camera_lens=camera_lens, default_camera_sensor_width=camera_sensor_width, width=mv_size, height=mv_size)
         position_images, normal_images, mask_images = render_geo_views_tensor(mesh, mvp_matrix, img_size=(mv_size, mv_size))
@@ -247,7 +270,7 @@ class SeqTex_Step1_ProcessMesh:
             uv_preview_image = fast_uv_preview(uvs, faces, image_size=(uv_size,uv_size))
             print(f"Done Generating atlas")
                 
-        uv_preview_image = pil2tensor(uv_preview_image)
+        uv_preview_image = pil2tensor(uv_preview_image.transpose(Image.FLIP_TOP_BOTTOM))
 
         return (mesh_export, uv_preview_image, position_map_path, normal_map_path, position_images_path,
                     normal_images_path, mask_images_path, w2c_path, mvp_matrix_path)
@@ -549,6 +572,8 @@ class SeqTex_TensorsToImages:
     def INPUT_TYPES(s):
         return {
             "required": {
+                "position_map_path": ("STRING",),
+                "normal_map_path": ("STRING",),
                 "position_images_path": ("STRING",),
                 "normal_images_path": ("STRING",),
                 "mask_images_path": ("STRING",),
@@ -556,17 +581,20 @@ class SeqTex_TensorsToImages:
             }
         }
 
-    RETURN_TYPES = ("IMAGE","IMAGE","MASK",)
-    RETURN_NAMES = ("normal_mv_images", "depth_mv_images", "mask_mv_images")
+    RETURN_TYPES = ("IMAGE","IMAGE","MASK","IMAGE","IMAGE")
+    RETURN_NAMES = ("normal_mv_images", "depth_mv_images", "mask_mv_images","position_map", "normal_map")
     FUNCTION = "get_images"
     CATEGORY = "SeqTex"
 
-    def get_images(self, position_images_path, normal_images_path,mask_images_path,w2c_matrix_path):
+    def get_images(self, position_map_path, normal_map_path, position_images_path, normal_images_path,mask_images_path,w2c_matrix_path):
 
         import torch.nn.functional as F
         import threading
 
-
+        if isinstance(position_images_path, str):
+            position_map = load_tensor_from_file(position_map_path, map_location="cuda")
+        if isinstance(normal_map_path, str):
+            normal_map = load_tensor_from_file(normal_map_path, map_location="cuda")
         if isinstance(position_images_path, str):
             position_imgs = load_tensor_from_file(position_images_path, map_location="cuda")
         if isinstance(normal_images_path, str):
@@ -606,8 +634,11 @@ class SeqTex_TensorsToImages:
         normal_images = torch.cat(normal_images, dim=0)
         depth_images  = torch.cat(depth_images,  dim=0)
         mask_images  = torch.cat(mask_images,  dim=0)
- 
-        return normal_images, depth_images, mask_images
+        position_map = pil2tensor(tensor2pil(position_map).transpose(Image.FLIP_TOP_BOTTOM))
+        normal_map_img = tensor2pil(normal_map).transpose(Image.FLIP_TOP_BOTTOM)
+    
+        normal_map = pil2tensor(normal_map_img)
+        return normal_images, depth_images, mask_images, position_map, normal_map,
 
 class SeqTex_Step3_GenerateTexture:
     @classmethod
@@ -833,8 +864,8 @@ class SeqTex_Step3_GenerateTexture:
         uv_map_pred_cpu = pil2tensor(uv_map_pred_cpu)
         mv_out_cpu = pil2tensor(mv_out_cpu)
 
-        return uv_map_pred_cpu, mv_out_cpu,
 
+        return uv_map_pred_cpu, mv_out_cpu,
 
 
 NODE_CLASS_MAPPINGS = {

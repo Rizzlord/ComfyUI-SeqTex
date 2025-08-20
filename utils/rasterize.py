@@ -176,23 +176,152 @@ def render_geo_from_mesh(ctx, mesh, mvp_matrix, image_height, image_width):
 
     return final_pos_rgb_aa, final_norm_rgb_aa, mask_antialiased
 
-def rasterize_position_and_normal_maps(ctx, mesh, rasterize_height, rasterize_width):
+import torch
+import torch.nn.functional as F
+def gaussian_kernel(channels, kernel_size=15, sigma=5.0, device='cuda'):
+    """Creates a 2D Gaussian kernel for convolution."""
+    import math
+    ax = torch.arange(kernel_size, dtype=torch.float32, device=device) - (kernel_size - 1) / 2.0
+    xx, yy = torch.meshgrid(ax, ax, indexing='ij')
+    kernel = torch.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    kernel = kernel / kernel.sum()
+    kernel = kernel.view(1, 1, kernel_size, kernel_size).repeat(channels, 1, 1, 1)
+    return kernel
+
+def apply_gaussian_blur(tensor, kernel_size=15, sigma=5.0):
+    """Apply Gaussian blur via conv2d."""
+    channels = tensor.shape[1]
+    kernel = gaussian_kernel(channels, kernel_size, sigma, device=tensor.device)
+    padding = kernel_size // 2
+    return F.conv2d(tensor, kernel, padding=padding, groups=channels)
+
+
+import torch
+import torch.nn.functional as F
+
+def bleed_edges_only(tensor, mask, bleed_radius=5):
+    """
+    Bleed edges outward by repeating nearest valid pixel, without mixing colors.
+
+    tensor: (B, H, W, C) -> position_map or normal_map
+    mask: (B, 1, H, W) boolean tensor where True = valid pixels
+    bleed_radius: number of pixels to extend
+    """
+    B, H, W, C = tensor.shape
+    tensor = tensor.permute(0, 3, 1, 2).contiguous()  # B, C, H, W
+    mask = mask.bool()
+
+    for _ in range(bleed_radius):
+        mask_float = mask.float()  # cast to float for padding
+
+        # Shift tensor in 4 directions
+        up    = F.pad(tensor[:, :, :-1, :], (0,0,1,0), mode='replicate')
+        down  = F.pad(tensor[:, :, 1:, :], (0,0,0,1), mode='replicate')
+        left  = F.pad(tensor[:, :, :, :-1], (1,0,0,0), mode='replicate')
+        right = F.pad(tensor[:, :, :, 1:], (0,1,0,0), mode='replicate')
+
+        # Shift mask (use float for padding)
+        mask_up    = F.pad(mask_float[:, :, :-1, :], (0,0,1,0), mode='replicate') > 0.5
+        mask_down  = F.pad(mask_float[:, :, 1:, :], (0,0,0,1), mode='replicate') > 0.5
+        mask_left  = F.pad(mask_float[:, :, :, :-1], (1,0,0,0), mode='replicate') > 0.5
+        mask_right = F.pad(mask_float[:, :, :, 1:], (0,1,0,0), mode='replicate') > 0.5
+
+        # Combine neighbors only where current pixel is empty
+        update_mask = ~mask
+        nearest_val = torch.zeros_like(tensor)
+
+        for neighbor, neighbor_mask in zip([up, down, left, right],
+                                           [mask_up, mask_down, mask_left, mask_right]):
+            valid = neighbor_mask & update_mask
+            nearest_val = torch.where(valid.expand_as(tensor), neighbor, nearest_val)
+            mask = mask | neighbor_mask  # expand mask as we fill
+
+        tensor = torch.where(update_mask.expand_as(tensor), nearest_val, tensor)
+
+    return tensor.permute(0, 2, 3, 1)
+
+
+def compute_smooth_vertex_normals(v_pos: torch.Tensor, t_idx: torch.Tensor) -> torch.Tensor:
+    """
+    Compute smooth vertex normals by averaging face normals.
+
+    v_pos: [Nv, 3] vertex positions
+    t_idx: [Nf, 3] triangle indices
+    """
+    device = v_pos.device
+    Nv = v_pos.shape[0]
+
+    # Get triangle vertices
+    v0 = v_pos[t_idx[:, 0]]
+    v1 = v_pos[t_idx[:, 1]]
+    v2 = v_pos[t_idx[:, 2]]
+
+    # Compute face normals
+    face_normals = torch.cross(v1 - v0, v2 - v0, dim=1)  # [Nf, 3]
+
+    # Normalize face normals
+    face_normals = F.normalize(face_normals, dim=1)
+
+    # Accumulate face normals to vertices
+    vertex_normals = torch.zeros_like(v_pos)
+    vertex_normals.index_add_(0, t_idx[:, 0], face_normals)
+    vertex_normals.index_add_(0, t_idx[:, 1], face_normals)
+    vertex_normals.index_add_(0, t_idx[:, 2], face_normals)
+
+    # Normalize vertex normals
+    vertex_normals = F.normalize(vertex_normals, dim=1)
+
+    return vertex_normals
+
+def rasterize_position_and_normal_maps(ctx, mesh, rasterize_height, rasterize_width, dilate_pixels=10):
+
+    import numpy as np
+
+
     device = ctx.device
+    dilate_pixels = 50
     # Convert mesh data to torch tensors
     mesh_v = mesh.v_pos.to(device)
     mesh_f = mesh.t_pos_idx.to(device)
     uvs_tensor = mesh._v_tex.to(device)
     indices_tensor = mesh._t_tex_idx.to(device)
     normal_v = mesh.v_normal.to(device).contiguous()
+    normal_v = F.normalize(normal_v, dim=1)
 
-    # Interpolate mesh data
+
+
+    # Convert UVs to clip space and pad for rasterization
     uv_clip = uvs_tensor[None, ...] * 2.0 - 1.0
-    uv_clip_padded = torch.cat((uv_clip, torch.zeros_like(uv_clip[..., :1]), torch.ones_like(uv_clip[..., :1])), dim=-1)
+    uv_clip_padded = torch.cat(
+        (uv_clip, torch.zeros_like(uv_clip[..., :1]), torch.ones_like(uv_clip[..., :1])), dim=-1
+    )
+
+    # Rasterize UVs
     rasterized_output, _ = ctx.rasterize(uv_clip_padded, indices_tensor.int(), (rasterize_height, rasterize_width))
 
-    # Interpolate positions.
+    # Interpolate positions and normals
     position_map, _ = ctx.interpolate_one(mesh_v, rasterized_output, mesh_f.int())
     normal_map, _ = ctx.interpolate_one(normal_v, rasterized_output, mesh_f.int())
-    rasterization_mask = rasterized_output[..., 3:4] > 0
+
+    # Create rasterization mask
+    rasterization_mask = (rasterized_output[..., 3:4] > 0).float()
+    if rasterization_mask.dim() == 4:
+        rasterization_mask = rasterization_mask.permute(0, 3, 1, 2)  # [B, 1, H, W]
+    else:
+        rasterization_mask = rasterization_mask.unsqueeze(0).permute(0, 3, 1, 2)
+    # Original mask
+    orig_mask = rasterization_mask.clone()
+
+    # Bleed edges using the original mask
+    if dilate_pixels > 0:
+        position_map = bleed_edges_only(position_map, orig_mask, bleed_radius=dilate_pixels)
+        normal_map   = bleed_edges_only(normal_map, orig_mask, bleed_radius=dilate_pixels)
+
+    # Optionally dilate mask for later use
+    if dilate_pixels > 0:
+        kernel = torch.ones(1, 1, 2*dilate_pixels+1, 2*dilate_pixels+1, device=device)
+        rasterization_mask = F.conv2d(rasterization_mask, kernel, padding=dilate_pixels)
+        rasterization_mask = torch.clamp(rasterization_mask, 0, 1)
+    
 
     return position_map, normal_map, rasterization_mask
