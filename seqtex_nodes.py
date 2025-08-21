@@ -41,19 +41,20 @@ class SeqTex_Loader:
             "required": {
                 "min_noise_level_index": ("INT", {"default": 15, "min": 0, "max": 999}),
                 "flow_shift": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 999.99}),
+                "rope_max_seq_len": ("INT", {"default": 1024, "min": 0, "max": 8192}),
             }
         }
     RETURN_TYPES = ("SEQTEX_PIPE",)
     FUNCTION = "load_pipe"
     CATEGORY = "SeqTex/Loaders"
 
-    def load_pipe(self, min_noise_level_index, flow_shift):
+    def load_pipe(self, min_noise_level_index, flow_shift, rope_max_seq_len):
         global seqtex_global_pipe
         if seqtex_global_pipe is not None:
             print("Using cached SeqTex pipe")
             return (seqtex_global_pipe,)
 
-        seqtex_global_pipe = get_seqtex_pipe(min_noise_level_index=min_noise_level_index, flow_shift=flow_shift)
+        seqtex_global_pipe = get_seqtex_pipe(min_noise_level_index=min_noise_level_index, flow_shift=flow_shift, rope_max_seq_len=rope_max_seq_len)
         return (seqtex_global_pipe,)
     
 class SeqTex_Load_Mesh:

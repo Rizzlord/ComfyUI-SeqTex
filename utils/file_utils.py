@@ -12,7 +12,7 @@ def save_tensor_to_file(tensor, prefix="tensor"):
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate a unique filename
-    file_name = f"{prefix}_{uuid.uuid4().hex}.pt"
+    file_name = f"{temp_dir}{prefix}_{uuid.uuid4().hex}.pt"
     temp_path = file_name
 
     # Save the tensor
