@@ -151,7 +151,7 @@ def render_rgb_from_texture_mesh_with_mask(
 
 def render_geo_from_mesh(ctx, mesh, mvp_matrix, image_height, image_width):
     device = mvp_matrix.device
-    mesh = mesh.to(device="cpu")
+    mesh = mesh.to(device=device)
     vertex_positions_clip = ctx.vertex_transform(mesh.v_pos, mvp_matrix)
     rasterized_output, _ = ctx.rasterize(vertex_positions_clip, mesh.t_pos_idx, (image_height, image_width))
     interpolated_positions, _ = ctx.interpolate_one(mesh.v_pos, rasterized_output, mesh.t_pos_idx)
