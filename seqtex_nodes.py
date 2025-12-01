@@ -922,7 +922,8 @@ def _finalize_seqtex_texture(accum_np, weight_np, coverage_mask, margin):
     texture_rgb = np.zeros_like(accum_np)
     if np.any(valid_mask):
         texture_rgb[valid_mask] = accum_np[valid_mask] / weight_np[valid_mask]
-    texture_rgb = np.clip(texture_rgb, 0.0, 255.0)
+    # Projected colors are accumulated in 0-1 space; scale before packing into uint8
+    texture_rgb = np.clip(texture_rgb * 255.0, 0.0, 255.0)
 
     target_mask = coverage_mask.copy()
     if margin > 0:
