@@ -5,6 +5,8 @@ einops
 jaxtyping
 typeguard
 imageio
+# For texture projection utilities
+scipy
 #trimesh==4.6.4
 #peft==0.14.0
 #diffusers==0.33.1

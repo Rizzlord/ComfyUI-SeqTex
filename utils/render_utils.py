@@ -130,6 +130,52 @@ def get_c2w(
     c2w[:, 3, 3] = 1.0
     return c2w
 
+def _build_camera_info_from_angles(
+        mesh: Dict,
+        azimuth: torch.Tensor,
+        elevation: torch.Tensor,
+        default_camera_lens: int,
+        default_camera_sensor_width: int) -> Dict:
+    if azimuth.shape != elevation.shape:
+        raise ValueError("Azimuth and elevation tensors must have the same shape.")
+    view_count = azimuth.shape[0]
+    if view_count == 0:
+        raise ValueError("At least one camera view is required.")
+
+    default_fovy = 2 * np.arctan(default_camera_sensor_width / (2 * default_camera_lens))
+
+    bbox_size = mesh.v_pos.max(dim=0)[0] - mesh.v_pos.min(dim=0)[0]
+    bbox_diagonal = torch.linalg.norm(bbox_size).item()
+    bbox_diagonal = max(bbox_diagonal, 1e-3)
+    distance = default_camera_lens / default_camera_sensor_width * bbox_diagonal
+
+    device = mesh.v_pos.device
+    dtype = azimuth.dtype
+
+    camera_distances = torch.full((view_count,), float(distance), device=device, dtype=dtype)
+    view_idxs = torch.arange(0, view_count, device=device)
+    c2w = get_c2w(azimuth, elevation, camera_distances)
+
+    if c2w.ndim == 2:
+        w2c: Float[Tensor, "4 4"] = torch.zeros(4, 4).to(c2w)
+        w2c[:3, :3] = c2w[:3, :3].permute(1, 0)
+        w2c[:3, 3:] = -c2w[:3, :3].permute(1, 0) @ c2w[:3, 3:]
+        w2c[3, 3] = 1.0
+    else:
+        w2c: Float[Tensor, "B 4 4"] = torch.zeros(c2w.shape[0], 4, 4).to(c2w)
+        w2c[:, :3, :3] = c2w[:, :3, :3].permute(0, 2, 1)
+        w2c[:, :3, 3:] = -c2w[:, :3, :3].permute(0, 2, 1) @ c2w[:, :3, 3:]
+        w2c[:, 3, 3] = 1.0
+
+    fovy = torch.full_like(azimuth, float(default_fovy))
+
+    return {
+        'cond_sup_view_idxs': view_idxs,
+        'cond_sup_c2w': c2w,
+        'cond_sup_w2c': w2c,
+        'cond_sup_fovy': fovy,
+    }
+
 def camera_strategy_test_4_90deg(
         mesh: Dict,
         num_views: int = 4,
@@ -138,12 +184,6 @@ def camera_strategy_test_4_90deg(
         default_camera_sensor_width: int = 36,
         include_poles: bool = False,
         **kwargs) -> Dict:
-    default_fovy = 2 * np.arctan(default_camera_sensor_width / (2 * default_camera_lens))
-
-    bbox_size = mesh.v_pos.max(dim=0)[0] - mesh.v_pos.min(dim=0)[0]
-    distance = default_camera_lens / default_camera_sensor_width * \
-               math.sqrt(bbox_size[0] ** 2 + bbox_size[1] ** 2 + bbox_size[2] ** 2)
-
     device = mesh.v_pos.device
     dtype = torch.float32
 
@@ -174,30 +214,13 @@ def camera_strategy_test_4_90deg(
     azimuth = torch.cat(azimuth_list) if azimuth_list else torch.empty(0, device=device, dtype=dtype)
     elevation = torch.cat(elevation_list) if elevation_list else torch.empty(0, device=device, dtype=dtype)
 
-    view_count = azimuth.shape[0]
-    camera_distances = torch.full((view_count,), float(distance), device=device, dtype=dtype)
-    view_idxs = torch.arange(0, view_count, device=device)
-    c2w = get_c2w(azimuth, elevation, camera_distances)
-    
-    if c2w.ndim == 2:
-        w2c: Float[Tensor, "4 4"] = torch.zeros(4, 4).to(c2w)
-        w2c[:3, :3] = c2w[:3, :3].permute(1, 0)
-        w2c[:3, 3:] = -c2w[:3, :3].permute(1, 0) @ c2w[:3, 3:]
-        w2c[3, 3] = 1.0
-    else:
-        w2c: Float[Tensor, "B 4 4"] = torch.zeros(c2w.shape[0], 4, 4).to(c2w)
-        w2c[:, :3, :3] = c2w[:, :3, :3].permute(0, 2, 1)
-        w2c[:, :3, 3:] = -c2w[:, :3, :3].permute(0, 2, 1) @ c2w[:, :3, 3:]
-        w2c[:, 3, 3] = 1.0
-
-    fovy = torch.full_like(azimuth, default_fovy)
-
-    return {
-        'cond_sup_view_idxs': view_idxs,
-        'cond_sup_c2w': c2w,
-        'cond_sup_w2c': w2c,
-        'cond_sup_fovy': fovy,
-    }
+    return _build_camera_info_from_angles(
+        mesh,
+        azimuth,
+        elevation,
+        default_camera_lens=default_camera_lens,
+        default_camera_sensor_width=default_camera_sensor_width,
+    )
 
 def _get_projection_matrix(
     fovy: Union[float, Float[Tensor, "B"]], aspect_wh: float, near: float, far: float, device=None
@@ -240,25 +263,165 @@ def _get_mvp_matrix(
     mvp_mtx = proj_mtx @ w2c
     return mvp_mtx
 
-def get_mvp_matrix(mesh, default_elevation, default_camera_lens, default_camera_sensor_width, num_views=4, width=512, height=512, strategy="strategy_test_4_90deg", include_poles=False):
+def _get_orthographic_projection_matrix(
+    half_heights: Union[float, Float[Tensor, "B"]],
+    aspect_wh: float,
+    near: float,
+    far: float,
+    device=None,
+) -> Float[Tensor, "*B 4 4"]:
+    if isinstance(half_heights, torch.Tensor):
+        hh = half_heights.to(device or half_heights.device)
+        if hh.ndim == 0:
+            hh = hh.unsqueeze(0)
+    else:
+        hh = torch.as_tensor(half_heights, dtype=torch.float32, device=device or "cpu").reshape(-1)
+    hh = torch.clamp(hh, min=1e-3)
+    half_widths = torch.clamp(hh * aspect_wh, min=1e-3)
+    batch = hh.shape[0]
+    proj = torch.zeros(batch, 4, 4, dtype=hh.dtype, device=hh.device)
+    proj[:, 0, 0] = 1.0 / half_widths
+    proj[:, 1, 1] = -1.0 / hh
+    proj[:, 2, 2] = -2.0 / (far - near)
+    proj[:, 2, 3] = -(far + near) / (far - near)
+    proj[:, 3, 3] = 1.0
+    return proj
+
+def _estimate_orthographic_half_extent(mesh, margin: float = 1.05) -> float:
+    bbox_max = mesh.v_pos.max(dim=0)[0]
+    bbox_min = mesh.v_pos.min(dim=0)[0]
+    max_extent = ((bbox_max - bbox_min).max().item() * 0.5)
+    if not math.isfinite(max_extent) or max_extent <= 0.0:
+        max_extent = 1.0
+    return max_extent * margin
+
+def _get_angles_from_view_preset(view_preset, default_elevation, device, dtype):
+    preset = str(view_preset)
+    default_elev = float(default_elevation)
+
+    def tensor(vals):
+        return torch.tensor(vals, device=device, dtype=dtype)
+
+    def default_elev_tensor(count):
+        return torch.full((count,), default_elev, device=device, dtype=dtype)
+
+    if preset == "2":
+        azimuth = tensor([-90.0, 90.0])
+        elevation = default_elev_tensor(2)
+    elif preset == "4":
+        azimuth = tensor([-90.0, 0.0, 90.0, 180.0])
+        elevation = default_elev_tensor(4)
+    elif preset == "6":
+        azimuth = tensor([-90.0, 0.0, 90.0, 180.0, 0.0, 0.0])
+        elevation = tensor([
+            default_elev,
+            default_elev,
+            default_elev,
+            default_elev,
+            90.0,
+            -90.0,
+        ])
+    elif preset == "12":
+        first_six = [
+            (-90.0, default_elev),
+            (0.0, default_elev),
+            (90.0, default_elev),
+            (180.0, default_elev),
+            (0.0, 90.0),
+            (0.0, -90.0),
+        ]
+        legacy = [
+            (-90.0, default_elev),
+            (-45.0, default_elev),
+            (0.0, default_elev),
+            (45.0, default_elev),
+            (90.0, default_elev),
+            (135.0, default_elev),
+            (180.0, default_elev),
+            (-135.0, default_elev),
+            (-90.0, 45.0),
+            (90.0, 45.0),
+            (-90.0, -45.0),
+            (90.0, -45.0),
+        ]
+        seen = {(round(a, 4), round(e, 4)) for a, e in first_six}
+        leftovers = []
+        for az, el in legacy:
+            key = (round(az, 4), round(el, 4))
+            if key in seen:
+                continue
+            seen.add(key)
+            leftovers.append((az, el))
+            if len(leftovers) >= 6:
+                break
+        while len(leftovers) < 6:
+            candidate = (0.0, 75.0 if len(leftovers) % 2 == 0 else -75.0)
+            key = (round(candidate[0], 4), round(candidate[1], 4))
+            if key in seen:
+                continue
+            leftovers.append(candidate)
+            seen.add(key)
+        ordered = first_six + leftovers[:6]
+        azimuth = tensor([az for az, _ in ordered])
+        elevation = tensor([el for _, el in ordered])
+    else:
+        raise ValueError(f"Unknown view preset '{view_preset}'.")
+
+    return azimuth, elevation
+
+def camera_strategy_from_view_preset(
+        mesh: Dict,
+        view_preset: str,
+        default_elevation: int,
+        default_camera_lens: int,
+        default_camera_sensor_width: int) -> Dict:
+    device = mesh.v_pos.device
+    dtype = torch.float32
+    azimuth, elevation = _get_angles_from_view_preset(view_preset, default_elevation, device, dtype)
+    return _build_camera_info_from_angles(
+        mesh,
+        azimuth,
+        elevation,
+        default_camera_lens=default_camera_lens,
+        default_camera_sensor_width=default_camera_sensor_width,
+    )
+
+def get_mvp_matrix(mesh, default_elevation=30, default_camera_lens=50, default_camera_sensor_width=36, num_views=4, width=512, height=512, strategy="strategy_test_4_90deg", include_poles=False, use_orthographic_camera=False, view_preset=None):
     if strategy == "strategy_test_4_90deg":
-        camera_info = camera_strategy_test_4_90deg(
-            mesh=mesh,
-            num_views=num_views,
-            default_elevation=default_elevation,
-            default_camera_lens=default_camera_lens,
-            default_camera_sensor_width=default_camera_sensor_width,
-            include_poles=include_poles,
-        )
+        if view_preset is not None:
+            camera_info = camera_strategy_from_view_preset(
+                mesh=mesh,
+                view_preset=view_preset,
+                default_elevation=default_elevation,
+                default_camera_lens=default_camera_lens,
+                default_camera_sensor_width=default_camera_sensor_width,
+            )
+        else:
+            camera_info = camera_strategy_test_4_90deg(
+                mesh=mesh,
+                num_views=num_views,
+                default_elevation=default_elevation,
+                default_camera_lens=default_camera_lens,
+                default_camera_sensor_width=default_camera_sensor_width,
+                include_poles=include_poles,
+            )
         cond_sup_fovy = camera_info["cond_sup_fovy"]
         cond_sup_c2w = camera_info["cond_sup_c2w"]
         cond_sup_w2c = camera_info["cond_sup_w2c"]
     else:
         raise ValueError(f"Unsupported camera strategy: {strategy}")
     proj_device = cond_sup_c2w.device if isinstance(cond_sup_c2w, torch.Tensor) else None
-    cond_sup_proj_mtx: Float[Tensor, "B 4 4"] = _get_projection_matrix(
-        cond_sup_fovy, width / height, 0.1, 1000.0, device=proj_device
-    )
+    aspect_ratio = width / height
+    if use_orthographic_camera:
+        ortho_extent = _estimate_orthographic_half_extent(mesh)
+        half_heights = cond_sup_fovy.new_full(cond_sup_fovy.shape, ortho_extent)
+        cond_sup_proj_mtx: Float[Tensor, "B 4 4"] = _get_orthographic_projection_matrix(
+            half_heights, aspect_ratio, 0.1, 1000.0, device=proj_device
+        )
+    else:
+        cond_sup_proj_mtx: Float[Tensor, "B 4 4"] = _get_projection_matrix(
+            cond_sup_fovy, aspect_ratio, 0.1, 1000.0, device=proj_device
+        )
     mvp_mtx: Float[Tensor, "B 4 4"] = _get_mvp_matrix(cond_sup_c2w, cond_sup_proj_mtx)
     return mvp_mtx, cond_sup_w2c
 
