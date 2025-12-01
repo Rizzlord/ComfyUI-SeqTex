@@ -1076,7 +1076,7 @@ class SeqTex_ProjectTexture:
                 "multiview_images": ("IMAGE",),
                 "seqtex_view_preset": (cls.PRESETS, {"default": "6"}),
                 "texture_resolution": (cls.RESOLUTIONS, {"default": "2048"}),
-                "margin": ("INT", {"default": 16, "min": 0, "max": 4096}),
+                "margin": ("INT", {"default": 1024, "min": 0, "max": 4096}),
                 "mvp_matrix_path": ("STRING", {"default": ""}),
                 "w2c_matrix_path": ("STRING", {"default": ""}),
                 "blend_angle_start": ("FLOAT", {"default": 40.0, "min": 0.0, "max": 85.0, "step": 0.5}),
