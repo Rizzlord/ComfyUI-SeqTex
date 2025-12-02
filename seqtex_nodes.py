@@ -957,7 +957,7 @@ def _convert_vertices_to_seqtex_space(mesh):
     seqtex_normals[:, 2] = normals[:, 1]
     return seqtex_vertices, seqtex_normals
 
-def _project_seqtex_multiview_texture(mesh, images, masks, mvp_matrix, w2c_matrix, texture_resolution, margin, angle_start, angle_end):
+def _project_seqtex_multiview_texture(mesh, images, masks, mvp_matrix, w2c_matrix, texture_resolution, margin, angle_start, angle_end, depth_occlusion=False):
     if dr is None:
         raise ImportError("nvdiffrast is required for SeqTex_ProjectTexture. Please install nvdiffrast.")
     if not torch.cuda.is_available():
@@ -1002,6 +1002,13 @@ def _project_seqtex_multiview_texture(mesh, images, masks, mvp_matrix, w2c_matri
 
     accum = torch.zeros((tex_size * tex_size, 3), device=device, dtype=torch.float32)
     weight_buf = torch.zeros((tex_size * tex_size, 1), device=device, dtype=torch.float32)
+    depth_buf = None
+    depth_eps = None
+    if depth_occlusion:
+        # Use a small tolerance based on mesh extent to allow minor depth differences for the same surface.
+        bbox_extent = float(np.max(mesh.extents)) if hasattr(mesh, "extents") and mesh.extents is not None else 1.0
+        depth_eps = max(1e-4, bbox_extent * 0.01)
+        depth_buf = torch.full((tex_size * tex_size,), float("inf"), device=device, dtype=torch.float32)
     coverage_mask = np.zeros((tex_size, tex_size), dtype=bool)
 
     cos_full = math.cos(math.radians(angle_start))
@@ -1030,6 +1037,9 @@ def _project_seqtex_multiview_texture(mesh, images, masks, mvp_matrix, w2c_matri
         uv_flat = uv_map.view(-1, 2)[mask_flat]
         color_flat = img.view(-1, 3)[mask_flat]
         weight_flat = angle_weight.view(-1)[mask_flat]
+        depth_flat = None
+        if depth_occlusion:
+            depth_flat = torch.norm(pos_map.view(-1, 3)[mask_flat], dim=1)
 
         if masks is not None:
             mask_view = masks[view_idx]
@@ -1046,16 +1056,30 @@ def _project_seqtex_multiview_texture(mesh, images, masks, mvp_matrix, w2c_matri
         uv_flat = uv_flat[valid]
         color_flat = color_flat[valid]
         weight_flat = weight_flat[valid]
+        if depth_flat is not None:
+            depth_flat = depth_flat[valid]
 
         tex_u = torch.clamp((uv_flat[:, 0] * (tex_size - 1)).long(), 0, tex_size - 1)
         tex_v = torch.clamp(((1.0 - uv_flat[:, 1]) * (tex_size - 1)).long(), 0, tex_size - 1)
         tex_idx = tex_v * tex_size + tex_u
 
+        if depth_flat is not None:
+            current_depth = depth_buf[tex_idx]
+            keep = depth_flat <= (current_depth + depth_eps)
+            if not keep.any():
+                continue
+            tex_idx = tex_idx[keep]
+            color_flat = color_flat[keep]
+            weight_flat = weight_flat[keep]
+            depth_flat = depth_flat[keep]
+            # Update depth buffer to track closest contributors per texel.
+            depth_buf[tex_idx] = torch.minimum(depth_buf[tex_idx], depth_flat)
+
         accum.index_add_(0, tex_idx, color_flat * weight_flat[:, None])
         weight_buf.index_add_(0, tex_idx, weight_flat[:, None])
 
-        tex_u_cpu = tex_u.detach().cpu().numpy()
-        tex_v_cpu = tex_v.detach().cpu().numpy()
+        tex_u_cpu = (tex_idx % tex_size).detach().cpu().numpy()
+        tex_v_cpu = (tex_idx // tex_size).detach().cpu().numpy()
         coverage_mask[tex_v_cpu, tex_u_cpu] = True
 
     if not coverage_mask.any():
@@ -1083,6 +1107,7 @@ class SeqTex_ProjectTexture:
                 "blend_angle_start": ("FLOAT", {"default": 40.0, "min": 0.0, "max": 85.0, "step": 0.5}),
                 "blend_angle_end": ("FLOAT", {"default": 60.0, "min": 0.0, "max": 120.0, "step": 0.5}),
                 "flip_images": ("BOOLEAN", {"default": False}),
+                "depth_occlusion": ("BOOLEAN", {"default": False, "tooltip": "When enabled, prefer nearer samples per texel to reduce projecting foreground parts onto occluded areas."}),
             },
             "optional": {
                 "mask_images_path": ("STRING", {"default": ""}),
@@ -1107,6 +1132,7 @@ class SeqTex_ProjectTexture:
         blend_angle_start,
         blend_angle_end,
         flip_images,
+        depth_occlusion,
         mask_images_path="",
         multiview_masks=None,
     ):
@@ -1158,6 +1184,7 @@ class SeqTex_ProjectTexture:
             int(margin),
             float(blend_angle_start),
             float(blend_angle_end),
+            bool(depth_occlusion),
         )
 
         color_map = torch.from_numpy(texture_rgba[:, :, :3].astype(np.float32) / 255.0).unsqueeze(0)
