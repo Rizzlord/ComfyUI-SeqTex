@@ -113,9 +113,9 @@ class SeqTex_Step1_ProcessMesh:
                 "camera_lens": ("INT", {"default": 50}),
                 "camera_sensor_width": ("INT", {"default": 36}),
                 "use_orthographic_camera": ("BOOLEAN", {"default": False}),
-                "view_preset": (["2", "4", "6", "12"], {
+                "view_preset": (["2", "4", "6", "10", "12"], {
                     "default": "4",
-                    "tooltip": "2=Front/Back, 4=Front/Side loop, 6=+Top/Bottom, 12=adds diagonals/top coverage"
+                    "tooltip": "2=Front/Back, 4=Front/Side loop, 6=+Top/Bottom, 10=full circle+Top/Bottom, 12=adds diagonals/top coverage"
                 })
             },
             "optional": {
@@ -209,7 +209,7 @@ class SeqTex_Step1_ProcessMesh:
         mesh.normalize()
 
 
-        preset_to_count = {"2": 2, "4": 4, "6": 6, "12": 12}
+        preset_to_count = {"2": 2, "4": 4, "6": 6, "10": 10, "12": 12}
         view_count = preset_to_count.get(str(view_preset), 4)
 
         mvp_matrix, w2c = get_mvp_matrix(
@@ -892,9 +892,10 @@ def _load_seqtex_tensor_from_path(path, description):
 
 def _resolve_seqtex_view_indices(preset, available_count):
     preset = str(preset).strip()
-    valid_presets = {"2": 2, "4": 4, "6": 6, "12": 12}
+    valid_presets = {"2": 2, "4": 4, "6": 6, "10": 10, "12": 12}
+    valid_preset_keys = sorted(valid_presets.keys(), key=int)
     if preset not in valid_presets:
-        raise ValueError(f"Unsupported SeqTex view preset '{preset}'. Expected one of {sorted(valid_presets.keys())}.")
+        raise ValueError(f"Unsupported SeqTex view preset '{preset}'. Expected one of {valid_preset_keys}.")
     if preset == "2":
         if available_count >= 3:
             return [0, 2]
@@ -1065,7 +1066,7 @@ def _project_seqtex_multiview_texture(mesh, images, masks, mvp_matrix, w2c_matri
     return _finalize_seqtex_texture(accum_np, weight_np, coverage_mask, margin)
 
 class SeqTex_ProjectTexture:
-    PRESETS = ["2", "4", "6", "12"]
+    PRESETS = ["2", "4", "6", "10", "12"]
     RESOLUTIONS = ["512", "1024", "2048", "4096", "8192"]
 
     @classmethod

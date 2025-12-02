@@ -321,6 +321,21 @@ def _get_angles_from_view_preset(view_preset, default_elevation, device, dtype):
             90.0,
             -90.0,
         ])
+    elif preset == "10":
+        ordered = [
+            (-90.0, default_elev),
+            (0.0, default_elev),
+            (90.0, default_elev),
+            (180.0, default_elev),
+            (0.0, 90.0),
+            (0.0, -90.0),
+            (-45.0, default_elev),
+            (45.0, default_elev),
+            (135.0, default_elev),
+            (-135.0, default_elev),
+        ]
+        azimuth = tensor([az for az, _ in ordered])
+        elevation = tensor([el for _, el in ordered])
     elif preset == "12":
         first_six = [
             (-90.0, default_elev),
