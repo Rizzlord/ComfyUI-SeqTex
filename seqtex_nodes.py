@@ -113,9 +113,9 @@ class SeqTex_Step1_ProcessMesh:
                 "camera_lens": ("INT", {"default": 50}),
                 "camera_sensor_width": ("INT", {"default": 36}),
                 "use_orthographic_camera": ("BOOLEAN", {"default": False}),
-                "view_preset": (["2", "4", "6", "10", "12"], {
+                "view_preset": (["2", "4", "6", "8", "10", "12"], {
                     "default": "4",
-                    "tooltip": "2=Front/Back, 4=Front/Side loop, 6=+Top/Bottom, 10=full circle+Top/Bottom, 12=adds diagonals/top coverage"
+                    "tooltip": "2=Front/Back, 4=Front/Side loop, 6=+Top/Bottom, 8=Front + diagonals/back (no pure sides) + Top/Bottom, 10=full circle+Top/Bottom, 12=adds diagonals/top coverage"
                 })
             },
             "optional": {
@@ -209,7 +209,7 @@ class SeqTex_Step1_ProcessMesh:
         mesh.normalize()
 
 
-        preset_to_count = {"2": 2, "4": 4, "6": 6, "10": 10, "12": 12}
+        preset_to_count = {"2": 2, "4": 4, "6": 6, "8": 8, "10": 10, "12": 12}
         view_count = preset_to_count.get(str(view_preset), 4)
 
         mvp_matrix, w2c = get_mvp_matrix(
@@ -892,7 +892,7 @@ def _load_seqtex_tensor_from_path(path, description):
 
 def _resolve_seqtex_view_indices(preset, available_count):
     preset = str(preset).strip()
-    valid_presets = {"2": 2, "4": 4, "6": 6, "10": 10, "12": 12}
+    valid_presets = {"2": 2, "4": 4, "6": 6, "8": 8, "10": 10, "12": 12}
     valid_preset_keys = sorted(valid_presets.keys(), key=int)
     if preset not in valid_presets:
         raise ValueError(f"Unsupported SeqTex view preset '{preset}'. Expected one of {valid_preset_keys}.")
@@ -1133,7 +1133,7 @@ def _sample_seqtex_displacement_from_uv(displacement_map, uv_coords):
     )
 
 class SeqTex_ProjectTexture:
-    PRESETS = ["2", "4", "6", "10", "12"]
+    PRESETS = ["2", "4", "6", "8", "10", "12"]
     RESOLUTIONS = ["512", "1024", "2048", "4096", "8192"]
 
     @classmethod
